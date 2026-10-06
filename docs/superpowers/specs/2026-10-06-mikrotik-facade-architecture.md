@@ -1655,4 +1655,4 @@ compatibility fixtures
 migration documentation
 ```
 
-Commit, Push, PR, Merge, Tag, Release und Deployment bleiben jeweils eigenständige Freigabeschritte.
+Commit und Push sind für dieses Projekt vom User fortlaufend freigegeben und benötigen keine weiteren Einzelgates. PR, Merge, Tag, Release und Deployment bleiben jeweils eigenständige Freigabeschritte.
