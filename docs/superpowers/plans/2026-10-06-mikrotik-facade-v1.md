@@ -327,14 +327,16 @@ src/main/java/io/github/praktimarc/mikrotik/facade/internal/diagnostic/SecretRed
 
 Tests:
 
-- [ ] `ApiConnectionException` → `MikrotikConnectionException`.
-- [ ] public `ApiCommandException` → `MikrotikCommandException`.
-- [ ] `ApiDataException` → `MikrotikDataException`.
-- [ ] no `impl.*` imports.
-- [ ] Category preserved only when `hasCategory()` is true.
-- [ ] Original cause retained.
-- [ ] Password, PSK, authentication response, private key and SNMP secret samples never appear in rendered diagnostics.
-- [ ] Arbitrary Raw commands still pass through redaction.
+- [x] `ApiConnectionException` → `MikrotikConnectionException`.
+- [x] public `ApiCommandException` → `MikrotikCommandException`.
+- [x] `ApiDataException` → `MikrotikDataException`.
+- [x] no `impl.*` imports.
+- [x] Category preserved only when `hasCategory()` is true.
+- [x] Original cause retained.
+- [x] Password, PSK, authentication response, private key and SNMP secret samples never appear in rendered diagnostics.
+- [x] Arbitrary Raw commands still pass through redaction.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. All 9 Task-6 tests pass in the local compatible JUnit harness. Production sources compile for Java 17 without production warnings, Javadoc/doclint completes without warnings, and no `me.legrange.mikrotik.impl.*` import is present.
 
 ---
 

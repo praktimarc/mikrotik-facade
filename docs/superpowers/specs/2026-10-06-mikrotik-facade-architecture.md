@@ -1271,6 +1271,8 @@ Authentication wird anhand des Bootstrap-Kontexts separat klassifiziert.
 
 Die ursprüngliche Low-Level-Exception bleibt als `cause` erhalten.
 
+Diese Cause-Identität hat eine technische Sicherheitsgrenze: Die Facade kann eigene Exception-Messages, strukturierte Felder, Logs und Diagnostics vollständig redigieren, aber sie kann den Text eines fremden Low-Level-`Throwable` nicht verändern und gleichzeitig exakt dasselbe Throwable-Objekt als `cause` erhalten. Consumer dürfen deshalb nicht ungefiltert rekursiv fremde Cause-Messages als sichere Facade-Diagnostics behandeln.
+
 ## 37. RouterOS Command Error Context
 
 `MikrotikCommandException` stellt sicheren strukturierten Kontext bereit:
@@ -1282,7 +1284,9 @@ OptionalInt category()
 Optional<String> routerOsMessage()
 ```
 
-Der Command-Pfad enthält keine Argumente. `routerOsMessage()` enthält ausschließlich eine bereits sanitizierte RouterOS-Meldung.
+Der Command-Pfad enthält keine Argumente. Auch wenn ein Raw-Command bereits Argumente oder Queries direkt im gelieferten String enthält, wird der öffentliche `commandPath()` auf den reinen Pfad gekürzt.
+
+`routerOsMessage()` enthält ausschließlich eine bereits sanitizierte RouterOS-Meldung. Zur Sanitization werden sowohl zentral bekannte sensitive Schlüssel als auch die tatsächlich zum Command gehörenden sensitiven Werte berücksichtigt, damit von RouterOS reflektierte Secrets nicht wieder in öffentliche Exception-Felder gelangen.
 
 `ApiCommandException.hasCategory()` muss berücksichtigt werden, da Kategorie `0` ein realer Wert sein kann.
 
@@ -1292,20 +1296,24 @@ Der RouterOS-Transport-Tag bleibt intern.
 
 Command-Argumente werden nie ungefiltert in Exceptions oder Logs ausgegeben.
 
-Sensitive Keys werden zentral behandelt.
+Die zentrale Policy liegt in `SecretRedactor`. `CommandDiagnosticRenderer` verwendet dieselbe Policy für strukturierte Command-Diagnostics, Raw-Commands und RouterOS-Fehlermeldungen.
 
-Mindestens betroffen:
+Sensitive Keys werden normalisiert und zentral behandelt. Mindestens betroffen:
 
 ```text
-password
-PSK
+password / passphrase
+PSK / pre-shared key
 private key material
 authentication responses
-SNMP secrets
+authentication/privacy/encryption passwords or keys
+SNMP community / secrets
+tokens / credentials / API keys
 weitere Credentials
 ```
 
-`RouterOsCommand.toString()` darf kein vollständiger unredacted Command Dump sein.
+Bekannte sensitive Werte werden zusätzlich aus freiem Diagnose-Text entfernt, auch wenn RouterOS nur den Wert reflektiert und dort keinen Schlüssel mehr nennt. Erkennbare Inline-Zuweisungen wie `password=...`, `community:...` oder `private-key=...` werden ebenfalls redigiert.
+
+Arbiträre Raw-Commands sind kein Redaction-Escape-Hatch. `RouterOsCommand.toString()` darf kein vollständiger unredacted Command Dump sein.
 
 ## 39. Files-Modul
 
