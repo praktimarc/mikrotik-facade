@@ -246,18 +246,25 @@ unknown-future-property
 
 Unbekannte zukünftige RouterOS-Properties dürfen niemals verloren gehen.
 
-Vorgesehene Zugriffe:
+Finalisierte v1-Zugriffe:
 
 ```java
-record.find(...)
-record.require(...)
-record.getLong(...)
-record.getBoolean(...)
-record.getDuration(...)
-record.asMap()
+Optional<String> find(String key)
+String require(String key) throws MikrotikDataException
+
+OptionalLong getLong(String key) throws MikrotikDataException
+long requireLong(String key) throws MikrotikDataException
+
+Optional<Boolean> getBoolean(String key) throws MikrotikDataException
+boolean requireBoolean(String key) throws MikrotikDataException
+
+Optional<Duration> getDuration(String key) throws MikrotikDataException
+Duration requireDuration(String key) throws MikrotikDataException
+
+Map<String, String> asMap()
 ```
 
-Die endgültigen Methodennamen werden bei der API-Spezifikation festgelegt.
+Fehlende optionale Properties bleiben leer; fehlende erforderliche oder vorhandene, aber nicht konvertierbare Werte erzeugen `MikrotikDataException`. Konvertierungsfehler dürfen den vollständigen Raw-Wert nicht in die Exception-Meldung übernehmen. `asMap()` liefert eine immutable, einfügereihenfolgetreue Sicht auf die exakt empfangenen Properties.
 
 ## 8. Typed Entities + Raw Escape Hatch
 
@@ -1122,6 +1129,8 @@ MikrotikFacadeException
 
 `MikrotikFacadeException` bleibt ein möglicher generischer Fallback für zukünftige unbekannte Low-Level-Fehler.
 
+`MikrotikFacadeException` erweitert `Exception` und ist damit eine checked Exception. Die technischen Facade-Unterklassen bleiben ebenfalls checked; nur Programmier- und Lifecycle-Fehler wie `IllegalArgumentException` und `IllegalStateException` sind davon getrennt unchecked.
+
 Normale fachliche Ergebnisse werden nicht über Exceptions modelliert.
 
 Beispiel:
@@ -1187,14 +1196,16 @@ Die ursprüngliche Low-Level-Exception bleibt als `cause` erhalten.
 
 ## 37. RouterOS Command Error Context
 
-`MikrotikCommandException` soll sicheren strukturierten Kontext bereitstellen:
+`MikrotikCommandException` stellt sicheren strukturierten Kontext bereit:
 
-```text
-Facade operation
-RouterOS command path
-RouterOS error category, falls vorhanden
-RouterOS message
+```java
+Optional<String> operation()
+Optional<String> commandPath()
+OptionalInt category()
+Optional<String> routerOsMessage()
 ```
+
+Der Command-Pfad enthält keine Argumente. `routerOsMessage()` enthält ausschließlich eine bereits sanitizierte RouterOS-Meldung.
 
 `ApiCommandException.hasCategory()` muss berücksichtigt werden, da Kategorie `0` ein realer Wert sein kann.
 

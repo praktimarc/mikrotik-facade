@@ -183,7 +183,7 @@ Rules:
 - [x] Mark old bugs/workarounds explicitly instead of reproducing them.
 - [x] Identify every typed facade primitive needed to make every non-obsolete row implementable.
 - [x] Identify undocumented RouterOS behavior needing fixtures or research.
-- [ ] Review the completed matrix before module implementation.
+- [x] Review the completed matrix before module implementation.
 
 This task determines the exact final set of typed module methods. No later module may silently omit a parity row.
 
@@ -211,19 +211,21 @@ src/main/java/io/github/praktimarc/mikrotik/facade/exception/MikrotikFileExcepti
 
 Tests must establish:
 
-- [ ] `RouterOsRecord` is immutable.
-- [ ] Unknown property names and exact original string values survive unchanged.
-- [ ] Required and optional access differ cleanly.
-- [ ] Typed conversion failure becomes `MikrotikDataException`.
-- [ ] `RouterOsProperties` preserves deterministic insertion order and rejects null keys/values.
-- [ ] Exception causes survive mapping.
-- [ ] RouterOS category can distinguish “missing” from legitimate category `0`.
+- [x] `RouterOsRecord` is immutable.
+- [x] Unknown property names and exact original string values survive unchanged.
+- [x] Required and optional access differ cleanly.
+- [x] Typed conversion failure becomes `MikrotikDataException`.
+- [x] `RouterOsProperties` preserves deterministic insertion order and rejects null keys/values.
+- [x] Exception causes survive mapping.
+- [x] RouterOS category can distinguish “missing” from legitimate category `0`.
 
 Run:
 
 ```text
 mvn -Dtest=RouterOsRecordTest,RouterOsPropertiesTest,*ExceptionTest test
 ```
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven command remains pending. The Task-3 production and test sources were compiled for Java 17, all 13 Task-3 tests passed with a local compatible JUnit runner, and `javadoc -Xdoclint:all` completed without warnings.
 
 ---
 
