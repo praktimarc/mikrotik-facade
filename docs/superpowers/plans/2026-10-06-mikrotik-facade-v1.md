@@ -179,10 +179,10 @@ getFirewallStateForClientIP
 
 Rules:
 
-- [ ] Do not invent behavior missing from the old source.
-- [ ] Mark old bugs/workarounds explicitly instead of reproducing them.
-- [ ] Identify every typed facade primitive needed to make every non-obsolete row implementable.
-- [ ] Identify undocumented RouterOS behavior needing fixtures or research.
+- [x] Do not invent behavior missing from the old source.
+- [x] Mark old bugs/workarounds explicitly instead of reproducing them.
+- [x] Identify every typed facade primitive needed to make every non-obsolete row implementable.
+- [x] Identify undocumented RouterOS behavior needing fixtures or research.
 - [ ] Review the completed matrix before module implementation.
 
 This task determines the exact final set of typed module methods. No later module may silently omit a parity row.
