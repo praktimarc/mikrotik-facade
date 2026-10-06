@@ -716,6 +716,8 @@ Der Listener dient insbesondere dazu, Session-Verlust auch ohne aktive Commands 
 
 Absichtliches `close()` erzeugt keinen `connectionLost()`-Callback.
 
+Die Facade entfernt ihren Listener vor dem Low-Level-`close()`. Ein trotzdem verspäteter oder bereits konkurrierender `connectionLost()`-Callback darf einen begonnenen kontrollierten Close nicht mehr in `BROKEN` umwandeln. Der Zustandsübergang wird atomar entschieden.
+
 Damit bleibt:
 
 ```text
@@ -734,7 +736,7 @@ Aktive Commands erhalten ihre Connection-Fehler bereits direkt durch `mikrotik-j
 
 ## 21. close()
 
-`MikrotikRtrApi.close()` ist idempotent.
+`MikrotikRtrApi.close()` ist idempotent und darf beim eigentlichen Low-Level-Close eine `MikrotikConnectionException` melden. Unabhängig davon endet ein begonnener kontrollierter Close im Zustand `CLOSED`.
 
 Ablauf:
 
@@ -786,6 +788,10 @@ OPEN
 ```
 
 Schlägt ein notwendiger Schritt fehl, wird die teilweise aufgebaute Low-Level-Verbindung geschlossen und keine `MikrotikRtrApi` zurückgegeben.
+
+Die produktive Verbindungserzeugung delegiert ausschließlich an die öffentliche Low-Level-API `ApiConnection.connect(SocketFactory, host, port, timeout)`. Für kontrollierte Unit-Tests existiert intern ein schmaler, nicht öffentlicher Connection-Factory-Seam; er ist kein Bestandteil der Facade-API.
+
+`MikrotikRtrApiBuilder.connect()` ist der öffentliche Bootstrap-Einstieg. Der konfigurierte Command-Timeout wird direkt nach Listener-Registrierung auf die Low-Level-Connection gesetzt. Der optionale caller-provided Callback-Executor wird als Session-Konfiguration übernommen, aber erst von späteren Runtime-Komponenten tatsächlich verwendet.
 
 ## 23. Transportmodi
 
@@ -865,9 +871,11 @@ Default:
 
 Retries können ausschließlich für den Bootstrap konfiguriert werden.
 
-Retry-fähig sind technische Connect-/Login-Probleme.
+Retry-fähig sind ausschließlich technische Connect-/Login-Probleme.
 
-Ein eindeutiger Authentication-Reject wird nicht sinnlos mehrfach wiederholt.
+Ein eindeutiger Authentication-Reject wird nicht sinnlos mehrfach wiederholt. Ein während `login(...)` gelieferter öffentlicher `ApiCommandException` wird als Authentication-Reject behandelt und zu `MikrotikAuthenticationException` gemappt.
+
+Nach erfolgreichem Login werden Environment-Kommandos nicht automatisch wiederholt. Ein Fehler in `/system/resource` oder `/system/package` beendet deshalb den Bootstrap dieses Aufrufs statt bereits ausgeführte Bootstrap-Kommandos zu replayen.
 
 Jeder Retry erzeugt eine neue:
 
@@ -905,9 +913,30 @@ board/hardware context
 installed package snapshot
 ```
 
-Die genauen typisierten Felder werden nur aufgenommen, wenn fachlich sinnvoll.
+Finalisierte v1-Struktur:
 
-Rohdaten bleiben erhalten.
+```java
+RouterOsEnvironment
+  .systemInfo()
+  .packages()
+  .packageInformationAvailable()
+
+RouterOsSystemInfo
+  .version()
+  .architectureName()
+  .boardName()
+  .platform()
+  .raw()
+
+RouterOsPackage
+  .name()
+  .version()
+  .raw()
+```
+
+`RouterOsSystemInfo.version()` ist verpflichtend. Architektur, Board und Plattform bleiben optional. Package-Name ist für vorhandene Package-Zeilen verpflichtend, Package-Version optional.
+
+Rohdaten bleiben vollständig erhalten. Alle Environment-Modelle und enthaltenen Listen sind immutable Session-Snapshots.
 
 Öffentlich wird ein read-only Zugriff angeboten:
 
@@ -923,6 +952,16 @@ Das Environment ist ein Session-Snapshot und wird in v1 nicht automatisch aktual
 
 `/system/package` ist eine wichtige zusätzliche Informationsquelle, darf aber bei eindeutig nicht unterstützten Systemen optional fehlen.
 
+Ein erfolgreich abgefragter, aber leerer Package-Snapshot ist fachlich verschieden von nicht verfügbarer Package-Information:
+
+```text
+packages() = Optional.of(emptyList())
+→ Package-Abfrage war verfügbar und lieferte keine Zeilen
+
+packages() = Optional.empty()
+→ Package-Information ist auf diesem System ausdrücklich nicht verfügbar
+```
+
 Ein nicht verfügbarer Package-Snapshot bedeutet:
 
 ```text
@@ -935,7 +974,9 @@ nicht automatisch:
 Session kann nicht verwendet werden
 ```
 
-Technische Fehler wie Connection-Loss während des Bootstrap bleiben dagegen Bootstrap-Fehler.
+Für v1 wird „Package-Command ausdrücklich nicht verfügbar“ konservativ nur dann akzeptiert, wenn der öffentliche Low-Level-`ApiCommandException` eine echte RouterOS-Category `0` enthält und die RouterOS-Meldung command-bezogen ist. Andere Command-Fehler bleiben fatal.
+
+`/system/resource` muss genau einen verwertbaren Datensatz mit nicht-leerer `version` liefern. Technische Fehler wie Connection-Loss während des Bootstrap bleiben Bootstrap-Fehler.
 
 ## 28. Capability-Modell
 

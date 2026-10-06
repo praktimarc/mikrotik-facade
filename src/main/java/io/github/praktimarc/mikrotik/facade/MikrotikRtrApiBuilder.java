@@ -1,5 +1,8 @@
 package io.github.praktimarc.mikrotik.facade;
 
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
+import io.github.praktimarc.mikrotik.facade.internal.session.BootstrapConfig;
+import io.github.praktimarc.mikrotik.facade.internal.session.Bootstrapper;
 import io.github.praktimarc.mikrotik.facade.transport.ApiTransport;
 
 import java.time.Duration;
@@ -8,9 +11,6 @@ import java.util.concurrent.Executor;
 
 /**
  * Builder for a RouterOS facade session.
- *
- * <p>This type owns configuration only. Network bootstrap is intentionally
- * implemented separately.</p>
  */
 public final class MikrotikRtrApiBuilder {
 
@@ -130,8 +130,7 @@ public final class MikrotikRtrApiBuilder {
     /**
      * Supplies the executor used later for public callbacks.
      *
-     * <p>Caller-provided executors remain caller-owned and are never shut down by
-     * the facade.</p>
+     * <p>Caller-provided executors remain caller-owned and are never shut down by the facade.</p>
      *
      * @param executor callback executor
      * @return this builder
@@ -139,6 +138,33 @@ public final class MikrotikRtrApiBuilder {
     public MikrotikRtrApiBuilder callbackExecutor(Executor executor) {
         this.callbackExecutor = Objects.requireNonNull(executor, "executor");
         return this;
+    }
+
+    /**
+     * Connects, authenticates and discovers the RouterOS environment before returning a usable facade session.
+     *
+     * @return fully bootstrapped authenticated facade session
+     * @throws MikrotikFacadeException if bootstrap cannot complete successfully
+     */
+    public MikrotikRtrApi connect() throws MikrotikFacadeException {
+        ValidatedConfig validated = validatedConfig();
+        BootstrapConfig config = new BootstrapConfig(
+                validated.host(),
+                validated.username(),
+                validated.password(),
+                validated.transport().socketFactory(),
+                validated.port(),
+                validated.connectTimeoutMillis(),
+                validated.commandTimeoutMillis(),
+                validated.bootstrapRetries(),
+                validated.callbackExecutor());
+
+        Bootstrapper.BootstrapResult result = new Bootstrapper().bootstrap(config);
+        return new MikrotikRtrApi(
+                result.connection(),
+                result.lifecycle(),
+                result.environment(),
+                result.callbackExecutor());
     }
 
     @Override

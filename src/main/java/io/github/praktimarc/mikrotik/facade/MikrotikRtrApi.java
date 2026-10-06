@@ -1,15 +1,33 @@
 package io.github.praktimarc.mikrotik.facade;
 
+import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
+import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
+import me.legrange.mikrotik.ApiConnection;
+import me.legrange.mikrotik.ApiConnectionException;
+
+import java.util.Objects;
+import java.util.concurrent.Executor;
+
 /**
  * Entry point for one authenticated RouterOS facade session.
- *
- * <p>Session creation is configured through {@link #builder()}. The bootstrap
- * implementation is introduced separately so the builder contract can be
- * validated independently.</p>
  */
 public final class MikrotikRtrApi implements AutoCloseable {
 
-    private MikrotikRtrApi() {
+    private final ApiConnection connection;
+    private final SessionLifecycle lifecycle;
+    private final RouterOsEnvironment environment;
+    private final Executor configuredCallbackExecutor;
+
+    MikrotikRtrApi(
+            ApiConnection connection,
+            SessionLifecycle lifecycle,
+            RouterOsEnvironment environment,
+            Executor configuredCallbackExecutor) {
+        this.connection = Objects.requireNonNull(connection, "connection");
+        this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
+        this.environment = Objects.requireNonNull(environment, "environment");
+        this.configuredCallbackExecutor = configuredCallbackExecutor;
     }
 
     /**
@@ -22,13 +40,40 @@ public final class MikrotikRtrApi implements AutoCloseable {
     }
 
     /**
-     * Closes this facade session.
+     * Returns the immutable RouterOS environment captured during bootstrap.
      *
-     * <p>The concrete session lifecycle is installed by the bootstrap layer.
-     * No externally constructible facade instance exists before that layer is
-     * present.</p>
+     * @return session environment snapshot
+     */
+    public RouterOsEnvironment environment() {
+        return environment;
+    }
+
+    /**
+     * Closes this facade session. Repeated calls are idempotent.
+     *
+     * @throws MikrotikConnectionException if the underlying low-level connection reports an error while closing
      */
     @Override
-    public void close() {
+    public void close() throws MikrotikConnectionException {
+        if (!lifecycle.beginClose()) {
+            return;
+        }
+
+        connection.removeConnectionListener(lifecycle);
+        try {
+            connection.close();
+        } catch (ApiConnectionException exception) {
+            throw new MikrotikConnectionException("Unable to close RouterOS connection cleanly", exception);
+        } finally {
+            lifecycle.finishClose();
+        }
+    }
+
+    SessionLifecycle lifecycle() {
+        return lifecycle;
+    }
+
+    Executor configuredCallbackExecutor() {
+        return configuredCallbackExecutor;
     }
 }

@@ -280,6 +280,7 @@ src/main/java/io/github/praktimarc/mikrotik/facade/environment/RouterOsPackage.j
 
 src/main/java/io/github/praktimarc/mikrotik/facade/internal/session/SessionState.java
 src/main/java/io/github/praktimarc/mikrotik/facade/internal/session/SessionLifecycle.java
+src/main/java/io/github/praktimarc/mikrotik/facade/internal/session/BootstrapConfig.java
 src/main/java/io/github/praktimarc/mikrotik/facade/internal/session/Bootstrapper.java
 ```
 
@@ -298,17 +299,19 @@ validate
 
 Tests:
 
-- [ ] No facade instance escapes before full successful bootstrap.
-- [ ] `/system/resource` malformed → `MikrotikDataException`.
-- [ ] `/system/package` explicitly unavailable → valid environment with unavailable package information.
-- [ ] Transport loss during bootstrap → `MikrotikConnectionException`.
-- [ ] Authentication rejection → `MikrotikAuthenticationException`.
-- [ ] Technical login failure may follow configured bootstrap retry.
-- [ ] Authentication rejection is not retried.
-- [ ] Each retry creates a fresh `ApiConnection`.
-- [ ] `environment()` returns immutable session snapshot.
-- [ ] Fatal idle connection loss transitions `OPEN → BROKEN`.
-- [ ] Intentional close does not create `BROKEN`.
+- [x] No facade instance escapes before full successful bootstrap.
+- [x] `/system/resource` malformed → `MikrotikDataException`.
+- [x] `/system/package` explicitly unavailable → valid environment with unavailable package information.
+- [x] Transport loss during bootstrap → `MikrotikConnectionException`.
+- [x] Authentication rejection → `MikrotikAuthenticationException`.
+- [x] Technical login failure may follow configured bootstrap retry.
+- [x] Authentication rejection is not retried.
+- [x] Each retry creates a fresh `ApiConnection`.
+- [x] `environment()` returns immutable session snapshot.
+- [x] Fatal idle connection loss transitions `OPEN → BROKEN`.
+- [x] Intentional close does not create `BROKEN`.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. The final Task-5 JUnit sources compile against the verified public low-level signatures and all 13 Task-5 tests pass in the local compatible JUnit harness. Production sources compile with Java 17 and `-Xlint:all`; Javadoc/doclint completes without warnings.
 
 ---
 
