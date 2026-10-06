@@ -63,6 +63,36 @@ try (MikrotikRtrApi mtApi = MikrotikRtrApi.builder()
 
 Die vollständige Konfiguration erfolgt über den Builder. Convenience-`connect(...)`-Methoden dürfen angeboten werden, delegieren aber vollständig an denselben Builder.
 
+Finalisierte v1-Builder-Konfiguration:
+
+```java
+MikrotikRtrApi.builder()
+    .host(String)
+    .credentials(String username, String password)
+    .transport(ApiTransport)
+    .port(int)
+    .connectTimeout(Duration)
+    .commandTimeout(Duration)
+    .bootstrapRetries(int)
+    .callbackExecutor(Executor)
+```
+
+Defaultwerte:
+
+```text
+transport         = plain
+connectTimeout    = 60 s
+commandTimeout    = 60 s
+bootstrapRetries  = 0
+callbackExecutor  = facade-owned default when omitted
+```
+
+Portwerte werden auf `1..65535` validiert. Timeouts müssen positiv, exakt in ganzen Millisekunden darstellbar und auf den vom Low-Level-API erwarteten positiven `int`-Millisekundenbereich begrenzt sein. Validierung erzeugt keinerlei Netzwerkzugriff.
+
+Host und Benutzername dürfen nicht leer sein. Ein leerer Passwort-String bleibt zulässig; Passwortpolitik gehört zu RouterOS und wird von der Facade nicht erfunden. Builder- und Konfigurations-Diagnostics dürfen den Passwortwert niemals ausgeben.
+
+Die validierte Konfiguration ist ein interner immutable Snapshot für den späteren Bootstrap. Caller-provided Executors bleiben caller-owned.
+
 ## 3. Fachliche API-Struktur
 
 Die öffentliche API orientiert sich an RouterOS, bildet den CLI-Baum aber nicht blind 1:1 nach.
@@ -778,17 +808,23 @@ Custom Port ist möglich.
 
 Die API soll sicherheitsrelevante Modi explizit benennen und keine schwer verständlichen Boolean-Kombinationen verwenden.
 
-Beispielsweise konzeptionell:
+Finalisierte v1-Transport-API:
 
 ```java
 ApiTransport.plain()
 ApiTransport.tlsUnverified()
 ApiTransport.tlsVerified()
+ApiTransport.tlsVerified(SSLContext)
+ApiTransport.custom(SocketFactory, defaultPort)
 ```
 
-Verified TLS verwendet standardmäßig den JVM-Truststore.
+`plain()` verwendet standardmäßig Port 8728. Beide TLS-Modi verwenden standardmäßig Port 8729. Ein expliziter Builder-Port überschreibt den Transport-Default.
 
-Custom Trust kann über vorhandene Java-TLS-Abstraktionen wie `SSLContext` bzw. `SocketFactory` bereitgestellt werden.
+Verified TLS verwendet standardmäßig den JVM-Truststore und aktiviert zusätzlich Hostname-/Endpoint-Verification. Da die Low-Level-Bibliothek ein vom `SocketFactory` erzeugtes Socket selbst verbindet, kapselt die Facade die verwendete `SSLSocketFactory` und setzt die Endpoint-Identification explizit auf `HTTPS`. Auch ein eigener `SSLContext` behält diese Hostname-Prüfung bei.
+
+`tlsUnverified()` deaktiviert bewusst Zertifikats- und Hostname-Prüfung und ist deshalb sowohl im Typ als auch in Diagnostics ausdrücklich als unsicher erkennbar.
+
+Ein vollständig eigener `SocketFactory` bleibt über `custom(...)` als Escape Hatch möglich. In diesem Fall interpretiert oder verändert die Facade dessen Sicherheitssemantik nicht; der Caller gibt deshalb auch den Default-Port dieses Transports an.
 
 Die Facade implementiert kein eigenes Keystore-/PKI-Framework.
 

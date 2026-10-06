@@ -256,14 +256,16 @@ credentials
 
 Tests:
 
-- [ ] Plain defaults to 8728.
-- [ ] TLS modes default to 8729.
-- [ ] Explicit port overrides default.
-- [ ] Invalid timeout/port/retry configuration fails before networking.
-- [ ] Unverified TLS is visibly named as such.
-- [ ] Builder diagnostics never expose password values.
+- [x] Plain defaults to 8728.
+- [x] TLS modes default to 8729.
+- [x] Explicit port overrides default.
+- [x] Invalid timeout/port/retry configuration fails before networking.
+- [x] Unverified TLS is visibly named as such.
+- [x] Builder diagnostics never expose password values.
 
 No real connection logic yet.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. The Task-4 production and test sources were compiled for Java 17, all 13 Task-4 tests passed with a local compatible JUnit runner, `javac --release 17 -Xlint:all` completed without warnings, and `javadoc -Xdoclint:all` completed without warnings. Verified TLS additionally enforces hostname/endpoint identification.
 
 ---
 
