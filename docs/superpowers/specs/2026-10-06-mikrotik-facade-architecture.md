@@ -1123,6 +1123,25 @@ Technische Fehler werden nicht als `UNSUPPORTED` gecacht.
 
 Capability Probes sind immer read-only.
 
+Finalisierte v1-Struktur:
+
+```java
+CapabilityState
+  SUPPORTED
+  UNSUPPORTED
+  UNKNOWN
+
+CapabilityRegistry
+  .state(capability)
+  .recordDefinitive(capability, state)
+  .resolve(capability, readOnlyPrintCommand, probe)
+  .snapshot()
+```
+
+`CapabilityRegistry` ist session-scoped. Nur `SUPPORTED` und `UNSUPPORTED` werden dauerhaft für diese Session gecacht. `UNKNOWN` sowie technische Probe-Fehler verändern den Cache nicht und dürfen bei einem späteren Aufruf erneut geprüft werden. Widersprüchliche definitive Erkenntnisse werden als interner Zustandsfehler abgelehnt statt still überschrieben zu werden.
+
+Aktive v1-Probes akzeptieren ausschließlich RouterOS-`/print`-Commands. Package-, Version-, Board- und andere bereits bekannte Environment-Informationen werden nicht durch synthetische Write- oder Seiteneffekt-Probes ersetzt.
+
 ## 29. Capability ist nicht gleich Datenquelle
 
 Die Architektur unterscheidet:
@@ -1154,6 +1173,8 @@ wrong source
 
 Ein leerer Registration Table kann schlicht bedeuten, dass aktuell keine Clients registriert sind.
 
+Für das generische Compatibility-Framework bedeutet die Präsenz eines Source-Resultsets in der Resolver-Eingabe: diese Quelle wurde erfolgreich abgefragt. Eine vorhandene leere Liste ist deshalb semantisch verschieden von einem fehlenden Resultset.
+
 ## 30. FeatureSourceResolver
 
 Fachbereiche mit mehreren möglichen Datenquellen verwenden interne Source Resolver.
@@ -1173,6 +1194,26 @@ COMPOSITE
 
 Bei `COMPOSITE` können mehrere fachlich relevante RouterOS-Quellen abgefragt werden.
 
+Finalisierte v1-Plansemantik:
+
+```text
+SINGLE
+→ genau eine im Plan festgelegte Quelle
+
+PREFERRED_FALLBACK
+→ Preferred verwenden, sobald dessen Resultset erfolgreich vorhanden ist
+→ auch eine leere Preferred-Liste ist ein gültiges Ergebnis
+→ nur wenn das Preferred-Resultset fehlt, darf Fallback verwendet werden
+
+CONDITIONAL
+→ eine explizit vorab aufgelöste Compatibility-Bedingung wählt genau eine Quelle
+
+COMPOSITE
+→ alle im Plan genannten erfolgreich vorhandenen Quellen bleiben relevant
+```
+
+`first non-empty result wins` ist dadurch nicht nur dokumentarisch, sondern auch im generischen Resolver ausgeschlossen.
+
 Die jeweilige fachliche Operation entscheidet, ob und wie Ergebnisse zusammengeführt werden.
 
 Es gibt keine generische MAC-/ID-basierte Deduplication ohne gesicherte fachliche Semantik.
@@ -1190,6 +1231,16 @@ ResolvedRecord
 ```
 
 Dadurch können Mapper und Resolver korrekt unterscheiden, aus welchem RouterOS-Stack ein Datensatz stammt.
+
+Finalisierte interne Repräsentation:
+
+```java
+ResolvedRecord
+  .record()
+  .source()
+```
+
+`FeatureSourceResolver` bewahrt Source-Reihenfolge und jeden einzelnen Record unverändert. Selbst identische `.id`-, MAC-, Name- oder andere Werte aus zwei COMPOSITE-Quellen werden nicht generisch zusammengeführt oder dedupliziert.
 
 Die Provenienz muss nicht zwingend Teil jeder öffentlichen Entity sein.
 
@@ -1227,6 +1278,10 @@ HEURISTIC
 ```
 
 Heuristiken werden nur verwendet, wenn unvermeidbar und klar markiert.
+
+Der initiale Katalog wird mit Task 10 unter `docs/routeros-compatibility.md` angelegt. Er enthält bereits die bekannten Themen WiFi/CAPsMAN, Package-Hinweise, Signalvarianten, DHCP Client-/Circuit-ID, hardwareabhängige Interface-Counter und RouterOS-versionabhängige File-Funktionen. Spätere Typed-Module konkretisieren die jeweiligen Zeilen mit echten Fixtures und verifizierten Property-Varianten.
+
+Compatibility-Diagnostics enthalten ausschließlich validierte stabile Feature-Identifier, Strategy-Namen und Source-Identifier. RouterOS-Recordwerte, Command-Argumente, Queries, Credentials oder freie secret-bearing Begründungstexte werden dort nicht ausgegeben.
 
 ## 33. Bekannte Compatibility-Fälle
 

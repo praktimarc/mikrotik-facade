@@ -488,14 +488,18 @@ COMPOSITE
 
 Tests:
 
-- [ ] definitive `SUPPORTED/UNSUPPORTED` caches.
-- [ ] technical probe failure remains `UNKNOWN` and is not negatively cached.
-- [ ] probes are read-only.
-- [ ] empty successful result does not mean unsupported.
-- [ ] existing path does not automatically mean authoritative data source.
-- [ ] COMPOSITE preserves source provenance.
-- [ ] no generic deduplication by MAC/id.
-- [ ] Compatibility diagnostics explain source selection without exposing secrets.
+- [x] definitive `SUPPORTED/UNSUPPORTED` caches.
+- [x] technical probe failure remains `UNKNOWN` and is not negatively cached.
+- [x] probes are read-only.
+- [x] empty successful result does not mean unsupported.
+- [x] existing path does not automatically mean authoritative data source.
+- [x] COMPOSITE preserves source provenance.
+- [x] no generic deduplication by MAC/id.
+- [x] Compatibility diagnostics explain source selection without exposing secrets.
+
+Additional Task-10 coverage verifies that explicit `UNKNOWN` probe results are retried, conflicting definitive cache knowledge is rejected instead of silently flipped, a successfully empty preferred source does not trigger fallback, and fallback is used only when the preferred result set is unavailable.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. All 12 Task-10 tests pass in the local compatible JUnit harness. The six production classes compile for Java 17 without production warnings, Javadoc/doclint completes without warnings, and no `me.legrange.mikrotik.impl.*` import is present.
 
 ---
 
