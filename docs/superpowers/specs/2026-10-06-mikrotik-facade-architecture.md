@@ -171,6 +171,15 @@ Flow.Publisher<InterfaceMonitorEntry> stream =
 
 Sync, Async und Streaming teilen dieselbe interne RouterOS- und Operationslogik.
 
+Der öffentliche v1-Einstieg ist gespiegelt:
+
+```java
+mtApi.raw()
+mtApi.async().raw()
+```
+
+Es werden auch im Raw-Bereich keine `...Async()`-Methodensuffixe eingeführt. Beide Bäume teilen dieselbe Session, dieselbe `CommandEngine` und dieselben RouterOS-Operationsobjekte.
+
 ## 5. Zentrale Architektur
 
 Die Architektur lautet:
@@ -405,6 +414,34 @@ Dadurch bleiben auch terminale `!done`-Properties wie `ret` erhalten.
 
 Die Raw-API verwendet dieselbe Command Engine und dieselben Lifecycle-, Timeout- und Exception-Regeln wie typisierte Module.
 
+Finalisierte v1-Oberfläche:
+
+```java
+List<RouterOsRecord> records =
+        mtApi.raw().execute("/ip/route/print");
+
+RawCommandResult result =
+        mtApi.raw()
+             .command("/ip/firewall/address-list/add")
+             .argument("list", "blocked")
+             .argument("address", "192.0.2.10")
+             .execute();
+
+CompletableFuture<List<RouterOsRecord>> asyncRecords =
+        mtApi.async().raw().execute("/ip/route/print");
+
+CompletableFuture<RawCommandResult> asyncResult =
+        mtApi.async().raw()
+             .command("/ip/firewall/address-list/add")
+             .argument("list", "blocked")
+             .argument("address", "192.0.2.10")
+             .execute();
+```
+
+Die Convenience-`execute(path)`-Variante mappt direkt als eigene `RouterOsOperation<List<RouterOsRecord>>` in der Engine. Sie verwendet absichtlich kein nachgeschaltetes `thenApply(...)`, damit `CompletableFuture.cancel(...)` weiterhin bis zum internen `OperationContext` und damit zum Low-Level-Tag propagiert.
+
+`RawCommandBuilder` unterstützt dieselben Argument-, Equality-Query- und Property-Selection-Bausteine wie `RouterOsCommand`. `RawCommandResult` ist immutable und bewahrt die vollständige `completion()` einschließlich `ret` und zukünftiger unbekannter Properties.
+
 Sie umgeht ausschließlich:
 
 ```text
@@ -518,6 +555,8 @@ Die synchrone Low-Level-`execute(String)`-API wird nicht als zweite Facade-Ausf�
 `CommandEngine.executeSync(...)` und `CommandEngine.executeAsync(...)` erzeugen denselben `OperationContext` und starten denselben listenerbasierten Dispatch. Auch Sync wartet deshalb auf denselben internen Completion-Pfad statt die synchrone Low-Level-API aufzurufen.
 
 Async-Mapping läuft nach dem Low-Level-Callback über den internen Dispatch-Executor. Die öffentliche Future-Completion wird anschließend auf den Callback-Executor übergeben. Dadurch führt der Low-Level-Processor weder Operation-Mapping noch User-Future-Callbacks aus. Ein synchron wartender Caller hängt nicht vom Callback-Executor ab.
+
+Für kontrolliertes Session-Close führt die Engine zusätzlich eine interne Concurrent-Registry der aktuell endlichen `OperationContext`-Instanzen. `cancelActive()` fordert deren best-effort Cancellation an. Die Registry erzeugt weder RouterOS-Tags noch Response-Routing und ist kein zweiter Dispatcher; Einträge werden bei jeder logischen Terminal-Completion automatisch entfernt.
 
 Dadurch existieren:
 
@@ -664,7 +703,15 @@ blockingExecutor
 
 Facade-eigene Executors werden beim `close()` beendet.
 
-Vom Nutzer gelieferte Executors werden niemals von der Facade geschlossen.
+Für endliche v1-Commands existieren konkret:
+
+```text
+dispatchExecutor      → interne Dispatch-/Mapping-Arbeit
+timeoutScheduler      → Command-Timeouts
+callbackExecutor      → öffentliche Async-Completion/User-Callbacks
+```
+
+Wenn kein Callback-Executor geliefert wurde, erzeugt die Facade einen eigenen. Ein vom Nutzer gelieferter Callback-Executor bleibt dagegen caller-owned und wird niemals von der Facade geschlossen.
 
 ## 18. Flow.Publisher
 
@@ -734,6 +781,17 @@ innerhalb derselben Session.
 
 Kein transparenter Reconnect.
 
+Vor jedem neuen öffentlichen technischen Command wird der Session-Zustand geprüft:
+
+```text
+OPEN      → Operation darf starten
+BROKEN    → MikrotikConnectionException mit erhaltener fataler Low-Level-Ursache
+CLOSING   → IllegalStateException
+CLOSED    → IllegalStateException
+```
+
+Beim Async-Baum wird ein bereits bekannter `BROKEN`-Fehler über den konfigurierten Callback-Executor in das öffentliche Future completed. `CLOSING/CLOSED` bleibt bewusst ein synchroner Lifecycle-Programmierfehler.
+
 ## 20. ConnectionListener
 
 Nach erfolgreichem Low-Level-Connect wird sofort ein:
@@ -782,10 +840,12 @@ Ablauf:
 OPEN/BROKEN → CLOSING
 reject new operations
 cancel active streams
-best-effort cancel normal async operations
+CommandEngine.cancelActive()
+best-effort /cancel for finite operations with known tags
 complete public operations terminal
 close ApiConnection
-shutdown facade-owned executors
+drain already queued internal dispatch completion
+shutdown facade-owned timeout/dispatch/default-callback executors
 → CLOSED
 ```
 
@@ -829,7 +889,7 @@ Schlägt ein notwendiger Schritt fehl, wird die teilweise aufgebaute Low-Level-V
 
 Die produktive Verbindungserzeugung delegiert ausschließlich an die öffentliche Low-Level-API `ApiConnection.connect(SocketFactory, host, port, timeout)`. Für kontrollierte Unit-Tests existiert intern ein schmaler, nicht öffentlicher Connection-Factory-Seam; er ist kein Bestandteil der Facade-API.
 
-`MikrotikRtrApiBuilder.connect()` ist der öffentliche Bootstrap-Einstieg. Der konfigurierte Command-Timeout wird direkt nach Listener-Registrierung auf die Low-Level-Connection gesetzt. Der optionale caller-provided Callback-Executor wird als Session-Konfiguration übernommen, aber erst von späteren Runtime-Komponenten tatsächlich verwendet.
+`MikrotikRtrApiBuilder.connect()` ist der öffentliche Bootstrap-Einstieg. Der konfigurierte Command-Timeout wird direkt nach Listener-Registrierung auf die Low-Level-Connection gesetzt. Der optionale caller-provided Callback-Executor wird als Session-Konfiguration übernommen und ab dem öffentlichen Async-Baum tatsächlich für Future-Completion/User-Callbacks verwendet. Wenn keiner geliefert wurde, erzeugt die Session einen facade-owned Default-Callback-Executor. Der validierte `commandTimeout` wird unverändert in die Runtime-`CommandEngine` übernommen.
 
 ## 23. Transportmodi
 

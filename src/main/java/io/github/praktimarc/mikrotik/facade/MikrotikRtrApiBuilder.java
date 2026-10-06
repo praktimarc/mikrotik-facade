@@ -164,7 +164,8 @@ public final class MikrotikRtrApiBuilder {
                 result.connection(),
                 result.lifecycle(),
                 result.environment(),
-                result.callbackExecutor());
+                result.callbackExecutor(),
+                validated.commandTimeout());
     }
 
     @Override

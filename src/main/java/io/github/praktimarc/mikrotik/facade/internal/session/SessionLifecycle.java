@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.internal.session;
 
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
 import me.legrange.mikrotik.ApiConnectionException;
 import me.legrange.mikrotik.ConnectionListener;
 
@@ -46,6 +47,33 @@ public final class SessionLifecycle implements ConnectionListener {
         if (state.compareAndSet(SessionState.OPEN, SessionState.BROKEN)) {
             failure.compareAndSet(null, cause);
         }
+    }
+
+    /**
+     * Verifies that a new technical RouterOS operation may start.
+     *
+     * <p>A broken session is a technical connection failure. A closing or closed
+     * session is instead a lifecycle programming error.</p>
+     *
+     * @throws MikrotikConnectionException if the session is broken after fatal connection loss
+     * @throws IllegalStateException if controlled close has already started or completed
+     */
+    public void ensureOpen() throws MikrotikConnectionException {
+        SessionState current = state.get();
+        if (current == SessionState.OPEN) {
+            return;
+        }
+        if (current == SessionState.BROKEN) {
+            ApiConnectionException cause = failure.get();
+            if (cause == null) {
+                throw new MikrotikConnectionException("RouterOS session is broken");
+            }
+            throw new MikrotikConnectionException(
+                    "RouterOS session is broken after fatal connection loss",
+                    cause);
+        }
+        throw new IllegalStateException(
+                "RouterOS session is " + current.name().toLowerCase());
     }
 
     /**

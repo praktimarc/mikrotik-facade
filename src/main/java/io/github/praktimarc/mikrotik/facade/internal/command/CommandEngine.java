@@ -13,7 +13,9 @@ import me.legrange.mikrotik.ResultListener;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -30,6 +32,7 @@ public final class CommandEngine {
     private final Executor dispatchExecutor;
     private final Executor callbackExecutor;
     private final TimeoutScheduler timeoutScheduler;
+    private final Set<OperationContext> activeOperations = ConcurrentHashMap.newKeySet();
 
     /** Creates an engine backed by a scheduled executor for timeout tasks. */
     public CommandEngine(
@@ -102,6 +105,13 @@ public final class CommandEngine {
     }
 
     /**
+     * Requests best-effort cancellation of all currently active finite operations.
+     */
+    public void cancelActive() {
+        activeOperations.forEach(OperationContext::cancel);
+    }
+
+    /**
      * Executes an internal operation asynchronously through the same listener pipeline.
      */
     public <T> CompletableFuture<T> executeAsync(RouterOsOperation<T> operation) {
@@ -150,6 +160,7 @@ public final class CommandEngine {
                 connection,
                 operationName,
                 command);
+        activeOperations.add(context);
 
         TimeoutTask timeoutTask = timeoutScheduler.schedule(
                 () -> context.timeout(new MikrotikTimeoutException(
@@ -161,8 +172,10 @@ public final class CommandEngine {
                         null)),
                 commandTimeout);
 
-        context.resultFuture().whenComplete(
-                (ignored, failure) -> timeoutTask.cancel());
+        context.resultFuture().whenComplete((ignored, failure) -> {
+            timeoutTask.cancel();
+            activeOperations.remove(context);
+        });
 
         dispatchExecutor.execute(() -> dispatch(context));
         return new Execution(context);

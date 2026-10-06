@@ -384,12 +384,19 @@ Use controlled fake `ApiConnection` implementations and latches, not timing-depe
 **Files:**
 
 ```text
+src/main/java/io/github/praktimarc/mikrotik/facade/MikrotikRtrApi.java
+src/main/java/io/github/praktimarc/mikrotik/facade/MikrotikRtrApiBuilder.java
 src/main/java/io/github/praktimarc/mikrotik/facade/async/AsyncMikrotikRtrApi.java
 
 src/main/java/io/github/praktimarc/mikrotik/facade/raw/RawApi.java
 src/main/java/io/github/praktimarc/mikrotik/facade/raw/AsyncRawApi.java
 src/main/java/io/github/praktimarc/mikrotik/facade/raw/RawCommandBuilder.java
 src/main/java/io/github/praktimarc/mikrotik/facade/raw/RawCommandResult.java
+
+src/main/java/io/github/praktimarc/mikrotik/facade/internal/command/CommandEngine.java
+src/main/java/io/github/praktimarc/mikrotik/facade/internal/session/SessionLifecycle.java
+
+src/test/java/io/github/praktimarc/mikrotik/facade/RawApiIntegrationTest.java
 ```
 
 Required semantics:
@@ -407,14 +414,18 @@ async().raw()
 
 Tests:
 
-- [ ] Raw read works through shared engine.
-- [ ] Raw write completion exposes `ret`.
-- [ ] Unknown fields survive.
-- [ ] Raw execution performs no typed capability filtering.
-- [ ] RouterOS unsupported raw command produces normal `MikrotikCommandException`.
-- [ ] Async public future completion occurs through callback executor.
-- [ ] operation after controlled close throws synchronously.
-- [ ] operation on broken session follows connection-error semantics.
+- [x] Raw read works through shared engine.
+- [x] Raw write completion exposes `ret`.
+- [x] Unknown fields survive.
+- [x] Raw execution performs no typed capability filtering.
+- [x] RouterOS unsupported raw command produces normal `MikrotikCommandException`.
+- [x] Async public future completion occurs through callback executor.
+- [x] operation after controlled close throws synchronously.
+- [x] operation on broken session follows connection-error semantics.
+
+Additional Task-8 integration coverage also verifies that async convenience cancellation still reaches the low-level RouterOS tag, controlled close best-effort cancels active finite async work, and caller-provided callback executors remain caller-owned.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. Eight controlled runtime scenarios pass on the final Task-8 implementation. The final `RawApiIntegrationTest` contains 11 JUnit test cases and compiles against the verified public `mikrotik-java 3.0.8-praktimarc.4` signatures. New production sources compile for Java 17 without production warnings and Javadoc/doclint completes without warnings.
 
 ---
 
