@@ -257,6 +257,24 @@ Session state
 
 Ein RouterOS-Tag wird ausschließlich durch `ApiConnection` erzeugt und bleibt Transportdetail.
 
+Finalisierte v1-Struktur:
+
+```java
+RouterOsCommand.builder(path)
+    .argument(name, value)
+    .query(name, value)
+    .property(name)
+    .build();
+
+command.path()
+command.arguments()
+command.queries()
+command.properties()
+command.serialize()
+```
+
+Der Command ist ein immutable Snapshot. Argumente und Equality-Queries behalten ihre Einfügereihenfolge. Die Serialisierung verwendet ausschließlich die öffentliche Low-Level-String-API und quotiert Werte so, dass insbesondere `/` und `,` in Werten nicht als Parser-Syntax interpretiert werden. Ein Command-Pfad darf keine eingeschmuggelten Argumente oder Queries enthalten. `toString()` verwendet ausschließlich die zentrale redigierte Diagnostic-Darstellung.
+
 ## 7. RouterOsRecord
 
 `RouterOsRecord` ist die universelle immutable Raw-Repräsentation eines RouterOS-Datensatzes.
@@ -439,6 +457,15 @@ completion = { ret = "*A" }
 
 Die `.4`-Low-Level-Baseline liefert sämtliche normalen `!done`-Properties generisch an den Listener.
 
+Finalisierte v1-Zugriffe:
+
+```java
+List<RouterOsRecord> records()
+RouterOsRecord completion()
+```
+
+Beide Teile sind immutable Snapshots. `completion()` bleibt auch bei leerem `!done` ein vorhandener leerer `RouterOsRecord`; dadurch müssen Consumer nicht zwischen `null` und einer legitimen leeren Completion unterscheiden.
+
 ## 12. Interne Operations
 
 Fachliche Logik wird in kleinen internen Operations gekapselt.
@@ -447,7 +474,8 @@ Konzeptionell:
 
 ```java
 interface RouterOsOperation<T> {
-    RouterOsCommand command(...);
+    String name();
+    RouterOsCommand command();
     T map(CommandResult result) throws MikrotikFacadeException;
 }
 ```
@@ -487,6 +515,10 @@ Auch synchrone Facade-Aufrufe verwenden intern diesen gemeinsamen Pfad.
 
 Die synchrone Low-Level-`execute(String)`-API wird nicht als zweite Facade-Ausführungsarchitektur verwendet.
 
+`CommandEngine.executeSync(...)` und `CommandEngine.executeAsync(...)` erzeugen denselben `OperationContext` und starten denselben listenerbasierten Dispatch. Auch Sync wartet deshalb auf denselben internen Completion-Pfad statt die synchrone Low-Level-API aufzurufen.
+
+Async-Mapping läuft nach dem Low-Level-Callback über den internen Dispatch-Executor. Die öffentliche Future-Completion wird anschließend auf den Callback-Executor übergeben. Dadurch führt der Low-Level-Processor weder Operation-Mapping noch User-Future-Callbacks aus. Ein synchron wartender Caller hängt nicht vom Callback-Executor ab.
+
 Dadurch existieren:
 
 ```text
@@ -524,6 +556,8 @@ cancel()
 kann bereits eintreten, bevor `ApiConnection.execute(...)` den RouterOS-Tag zurückgegeben hat.
 
 In diesem Fall wird Cancellation vorgemerkt und `/cancel` unmittelbar nach Tag-Zuweisung best-effort gesendet.
+
+Erfolgt Cancellation noch im Zustand `CREATED`, bevor Dispatch begonnen hat, wird die Operation direkt lokal `CANCELLED` und es wird kein RouterOS-Command gesendet. Scheitert ein bereits gestarteter Dispatch nach gewonnenem Cancel-Race, ohne jemals einen Tag zu liefern, wird `CANCELLING` ebenfalls sauber zu `CANCELLED` finalisiert.
 
 Eine Operation darf logisch exakt einmal terminal werden.
 
@@ -585,6 +619,8 @@ MikrotikTimeoutException
 
 Timeout ist semantisch nicht dasselbe wie User-Cancellation.
 
+Timeout und User-Cancellation teilen lediglich den best-effort Remote-Cancel-Mechanismus. Timeout terminiert logisch mit `FAILED` und `MikrotikTimeoutException`; User-Cancellation terminiert mit `CANCELLED`. Ein Remote-Cancel-Fehler ersetzt das bereits gewonnene logische Terminalergebnis nicht.
+
 Langlaufende Streaming-Commands besitzen standardmäßig keinen Overall-Command-Timeout.
 
 Optionale spätere Konzepte:
@@ -613,6 +649,8 @@ callback executor
 ```
 
 Interne Completion und User-Callback-Ausführung sind getrennt.
+
+Wird ein synchroner Wait unterbrochen, fordert die Facade best-effort Cancellation an, stellt das Interrupt-Flag des Caller-Threads wieder her und meldet einen `MikrotikCommandException` mit sicherem Operation-/Command-Kontext.
 
 Dadurch hängt ein synchron wartender Aufruf nicht davon ab, ob ein User-Executor blockiert ist.
 

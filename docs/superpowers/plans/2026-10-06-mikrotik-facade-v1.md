@@ -361,17 +361,19 @@ all normal facade commands
 
 Tests:
 
-- [ ] `!re` records and `!done` completion metadata remain separate.
-- [ ] `ret` and arbitrary future completion properties survive.
-- [ ] Sync and Async go through the same internal engine.
-- [ ] no facade-level send lock exists.
-- [ ] no facade tag allocator/dispatcher exists.
-- [ ] cancellation before returned tag is remembered and propagated once tag exists.
-- [ ] cancellation after tag uses `ApiConnection.cancel(tag)`.
-- [ ] timeout produces `MikrotikTimeoutException` and best-effort cancel.
-- [ ] `done`, `trap`, timeout, cancel, close and connection-loss races produce exactly one logical terminal result.
-- [ ] interrupted Sync wait restores interrupt flag and becomes the agreed facade command error.
-- [ ] Low-Level processor callback performs no user code.
+- [x] `!re` records and `!done` completion metadata remain separate.
+- [x] `ret` and arbitrary future completion properties survive.
+- [x] Sync and Async go through the same internal engine.
+- [x] no facade-level send lock exists.
+- [x] no facade tag allocator/dispatcher exists.
+- [x] cancellation before returned tag is remembered and propagated once tag exists.
+- [x] cancellation after tag uses `ApiConnection.cancel(tag)`.
+- [x] timeout produces `MikrotikTimeoutException` and best-effort cancel.
+- [x] `done`, `trap`, timeout, cancel, close and connection-loss races produce exactly one logical terminal result.
+- [x] interrupted Sync wait restores interrupt flag and becomes the agreed facade command error.
+- [x] Low-Level processor callback performs no user code.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. The final Task-7 sources compile for Java 17 against the verified public low-level signatures, all 13 controlled Task-7 tests pass with latches/manual scheduling instead of timing-dependent sleeps, `-Xlint:all` reports no warnings from the new production classes, and Javadoc/doclint completes without warnings.
 
 Use controlled fake `ApiConnection` implementations and latches, not timing-dependent sleeps.
 
