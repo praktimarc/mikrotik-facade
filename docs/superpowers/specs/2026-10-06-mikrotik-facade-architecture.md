@@ -717,13 +717,19 @@ Wenn kein Callback-Executor geliefert wurde, erzeugt die Facade einen eigenen. E
 
 Streaming-Publisher sind cold.
 
-Eine Subscription startet genau eine RouterOS-Operation.
+Die interne v1-Struktur besteht aus:
 
-Mehrere Subscriber erzeugen voneinander unabhängige RouterOS-Operationen.
+```text
+RouterOsPublisher<T>
+RouterOsSubscription<T>
+SerialDelivery
+```
 
-Pro Subscription existiert eine begrenzte Queue.
+Die Konstruktion eines `RouterOsPublisher` führt keinerlei RouterOS-I/O aus. Erst `subscribe(...)` erzeugt eine neue `RouterOsSubscription`; jede Subscription startet exakt eine eigene listenerbasierte RouterOS-Operation. Mehrere Subscriber teilen deshalb weder RouterOS-Tag noch Queue, Demand oder Terminalzustand.
 
-`request(n)` steuert ausschließlich die lokale Auslieferung und kann den Router selbst nicht zuverlässig drosseln.
+Pro Subscription existiert eine begrenzte Queue mit fester Kapazität.
+
+`request(n)` steuert ausschließlich die lokale Auslieferung und kann den Router selbst nicht zuverlässig drosseln. Demand-Arithmetik saturiert bei `Long.MAX_VALUE`. Ein `request(0)` oder negativer Wert terminiert die Subscription nach den Flow-Regeln mit `IllegalArgumentException`.
 
 Es gilt:
 
@@ -739,9 +745,15 @@ MikrotikBackpressureException
 best-effort remote cancel
 ```
 
-Event-Reihenfolge pro Subscription ist garantiert.
+Der Low-Level-`ResultListener.receive(...)` führt keinen User-Code und kein typisiertes Mapping aus. Er erzeugt lediglich einen immutable `RouterOsRecord`-Snapshot, aktualisiert die bounded Queue und stößt den internen Dispatch-Handoff an. Mapping und sämtliche Flow-Callbacks laufen erst danach auf der seriellen Delivery-Lane.
 
-Callbacks derselben Subscription werden auch bei einem Multi-Thread-Executor serialisiert.
+`SerialDelivery` garantiert FIFO-Auslieferung und verhindert parallele Callbacks derselben Subscription auch dann, wenn der zugrunde liegende Callback-Executor mehrere Threads besitzt. Ein langsamer oder blockierender Subscriber darf dadurch den RouterOS-Reader-/Processor-Thread nicht blockieren.
+
+`!done` darf eintreffen, während noch Records gepuffert sind. `onComplete` wird erst ausgeliefert, nachdem alle bereits gepufferten Records entsprechend vorhandenem Demand ausgeliefert wurden. Bis zur tatsächlichen Terminal-Auslieferung kann ein lokaler Mapping-Fehler eines gepufferten Records einen vorgemerkten erfolgreichen Abschluss noch in `onError` überführen; ein erst danach eintreffendes Low-Level-Terminalsignal darf dagegen kein zweites Terminalereignis erzeugen.
+
+`Flow.Subscription.cancel()` verwendet denselben `OperationContext` wie endliche Commands. Damit wird auch Cancellation vor Rückgabe des Low-Level-Tags vorgemerkt und nach Tag-Zuweisung best-effort genau einmal an `ApiConnection.cancel(tag)` weitergegeben. Nach Flow-Cancellation werden keine weiteren `onNext`, `onComplete` oder `onError` ausgeliefert.
+
+Langlaufende Streams besitzen standardmäßig keinen generischen Overall-Command-Timeout.
 
 ## 19. Session State Machine
 

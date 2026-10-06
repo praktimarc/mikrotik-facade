@@ -441,19 +441,23 @@ src/main/java/io/github/praktimarc/mikrotik/facade/internal/stream/SerialDeliver
 
 Tests:
 
-- [ ] Publisher is cold.
-- [ ] each subscription starts its own RouterOS operation.
-- [ ] `request(1)` produces at most one delivered item.
-- [ ] saturating demand arithmetic.
-- [ ] `request(0)`/negative request terminates according to Flow rules.
-- [ ] bounded queue.
-- [ ] overflow → `MikrotikBackpressureException` + best-effort cancel.
-- [ ] no silent dropping.
-- [ ] events remain ordered.
-- [ ] callbacks for one subscription never execute concurrently.
-- [ ] cancel yields no later `onNext`, `onComplete` or `onError`.
-- [ ] stream has no generic overall command timeout.
-- [ ] slow subscriber never blocks RouterOS I/O thread.
+- [x] Publisher is cold.
+- [x] each subscription starts its own RouterOS operation.
+- [x] `request(1)` produces at most one delivered item.
+- [x] saturating demand arithmetic.
+- [x] `request(0)`/negative request terminates according to Flow rules.
+- [x] bounded queue.
+- [x] overflow → `MikrotikBackpressureException` + best-effort cancel.
+- [x] no silent dropping.
+- [x] events remain ordered.
+- [x] callbacks for one subscription never execute concurrently.
+- [x] cancel yields no later `onNext`, `onComplete` or `onError`.
+- [x] stream has no generic overall command timeout.
+- [x] slow subscriber never blocks RouterOS I/O thread.
+
+Additional Task-9 race coverage verifies cancellation before the low-level tag is returned and the local-mapping-after-`!done` case, where a buffered record mapping failure must still produce `onError` rather than a stale `onComplete`.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. The final Task-9 JUnit source passes all 14 controlled tests. The three production classes compile with Java 17 and `-Xlint:all` without warnings, Javadoc/doclint completes without warnings, and no `me.legrange.mikrotik.impl.*` import is present.
 
 ---
 
