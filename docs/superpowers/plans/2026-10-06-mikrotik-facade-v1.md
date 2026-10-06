@@ -172,9 +172,9 @@ Example:
 ```text
 getFirewallStateForClientIP
 → COMPOSED
-→ firewall().mangle() generic query
-→ /ip/firewall/mangle/print
-→ ISPSup itself interprets existence as client firewall state
+→ firewall().addressList() generic query
+→ /ip/firewall/address-list/print
+→ ISPSup itself interprets active-clients membership as client firewall state
 ```
 
 Rules:
@@ -520,12 +520,12 @@ Example parity:
 ```text
 getFirewallStateForClientIP
 → COMPOSED
-→ firewall().mangle().find(...)
+→ firewall().addressList().find(...)
 ```
 
 Tests:
 
-- [ ] Generic typed/property-based Mangle querying.
+- [ ] Generic typed/property-based Filter, Mangle and Address List querying.
 - [ ] empty result is normal.
 - [ ] common stable mutations have convenience methods where justified by the parity inventory.
 - [ ] flexible rule creation uses `RouterOsProperties`.

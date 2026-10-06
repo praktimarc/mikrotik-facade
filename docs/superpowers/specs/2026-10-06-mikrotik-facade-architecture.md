@@ -1530,13 +1530,13 @@ ISPSup:
 getFirewallStateForClientIP(ip)
 
 benötigt:
-Suche in /ip/firewall/mangle anhand einer IP
+Suche in /ip/firewall/address-list anhand einer IP und der fachlichen Liste
 
 Facade:
-firewall().mangle().find(...)
+firewall().addressList().find(...)
 
 ISPSup:
-interpretiert "Regel vorhanden" wieder als seinen Client-Firewall-State
+interpretiert "Eintrag in active-clients vorhanden" wieder als seinen Client-Firewall-State
 ```
 
 Für die Parity-Matrix gilt zusätzlich die Klassifizierung:
