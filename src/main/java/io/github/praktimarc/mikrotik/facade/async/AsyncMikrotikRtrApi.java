@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.async;
 
+import io.github.praktimarc.mikrotik.facade.dhcp.AsyncDhcpServerApi;
 import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
 
 import java.util.Objects;
@@ -10,14 +11,17 @@ import java.util.Objects;
 public final class AsyncMikrotikRtrApi {
 
     private final AsyncRawApi raw;
+    private final AsyncDhcpServerApi dhcpServer;
 
     /**
      * Creates the asynchronous facade tree for session wiring.
      *
      * @param raw asynchronous raw API
+     * @param dhcpServer asynchronous DHCP server API
      */
-    public AsyncMikrotikRtrApi(AsyncRawApi raw) {
+    public AsyncMikrotikRtrApi(AsyncRawApi raw, AsyncDhcpServerApi dhcpServer) {
         this.raw = Objects.requireNonNull(raw, "raw");
+        this.dhcpServer = Objects.requireNonNull(dhcpServer, "dhcpServer");
     }
 
     /**
@@ -27,5 +31,14 @@ public final class AsyncMikrotikRtrApi {
      */
     public AsyncRawApi raw() {
         return raw;
+    }
+
+    /**
+     * Returns the asynchronous typed DHCP server API.
+     *
+     * @return asynchronous DHCP server API
+     */
+    public AsyncDhcpServerApi dhcpServer() {
+        return dhcpServer;
     }
 }

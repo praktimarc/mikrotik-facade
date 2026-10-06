@@ -521,11 +521,25 @@ Tests derive from actual parity rows and fixtures.
 
 Mandatory compatibility rule:
 
-- [ ] Circuit-ID and related volatile fields use explicit known schemas only.
-- [ ] Unknown representation returns empty typed value while `raw()` remains intact.
-- [ ] no “find any property containing circuit” heuristic.
-- [ ] 0-or-1 lookup returns `Optional`.
-- [ ] multiple rows where exactly one is expected → `MikrotikDataException`.
+- [x] Circuit-ID and related volatile fields use explicit known schemas only.
+- [x] Unknown representation returns empty typed value while `raw()` remains intact.
+- [x] no “find any property containing circuit” heuristic.
+- [x] 0-or-1 lookup returns `Optional`.
+- [x] multiple rows where exactly one is expected → `MikrotikDataException`.
+
+Finalized public v1 surface in this slice:
+
+```java
+mtApi.dhcpServer().findLeaseByMac(mac);
+mtApi.dhcpServer().findLeaseByAddress(address);
+
+mtApi.async().dhcpServer().findLeaseByMac(mac);
+mtApi.async().dhcpServer().findLeaseByAddress(address);
+```
+
+The typed `DhcpLease` surface is restricted to the fields proven by the legacy DHCP DTO/parser inventory. RouterOS `.id` and every unknown/new field remain available through `raw()` rather than being invented as additional typed DTO fields. The legacy `active-client-id` parser defect is intentionally not reproduced.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. Eleven controlled DHCP/runtime scenarios pass, including the two root wiring assertions for `dhcpServer()` and `async().dhcpServer()`. The three final JUnit sources contain 11 test methods and compile against the verified project/runtime signatures. The five new DHCP production classes and the two root wiring changes compile for Java 17 without production warnings; Javadoc/doclint completes without warnings.
 
 This task serves as the first complete typed reference module.
 

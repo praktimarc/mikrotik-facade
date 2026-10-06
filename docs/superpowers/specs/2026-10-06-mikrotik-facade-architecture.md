@@ -128,6 +128,24 @@ Fachlich verständliche Convenience-Methoden werden gegenüber tiefen CLI-Ketten
 mtApi.dhcpServer().findLeaseByMac(mac);
 ```
 
+Task 11 finalisiert den ersten vollständigen typisierten Slice:
+
+```java
+Optional<DhcpLease> byMac =
+        mtApi.dhcpServer().findLeaseByMac(mac);
+
+Optional<DhcpLease> byAddress =
+        mtApi.dhcpServer().findLeaseByAddress(address);
+
+CompletableFuture<Optional<DhcpLease>> asyncByMac =
+        mtApi.async().dhcpServer().findLeaseByMac(mac);
+
+CompletableFuture<Optional<DhcpLease>> asyncByAddress =
+        mtApi.async().dhcpServer().findLeaseByAddress(address);
+```
+
+Beide Bäume verwenden dieselbe `CommandEngine`, denselben Session-Lifecycle und dieselbe Mapping-Operation. 0 Treffer sind ein normales leeres `Optional`; mehr als ein Treffer bei diesen expected-single Lookups ist inkonsistente RouterOS-Datenlage und führt zu `MikrotikDataException`.
+
 statt einer künstlichen Abbildung wie:
 
 ```java
@@ -1173,6 +1191,8 @@ wrong source
 
 Ein leerer Registration Table kann schlicht bedeuten, dass aktuell keine Clients registriert sind.
 
+Der DHCP-Lease-Slice verwendet dagegen eine eindeutige `SINGLE` Source: `/ip/dhcp-server/lease/print`. Unterschiede wie `agent-circuit-id` gegenüber `active-agent-circuit-id` sind Schema-Varianten innerhalb derselben Source und keine Source-Fallback-Entscheidung.
+
 Für das generische Compatibility-Framework bedeutet die Präsenz eines Source-Resultsets in der Resolver-Eingabe: diese Quelle wurde erfolgreich abgefragt. Eine vorhandene leere Liste ist deshalb semantisch verschieden von einem fehlenden Resultset.
 
 ## 30. FeatureSourceResolver
@@ -1352,6 +1372,36 @@ entity.raw()
 erhalten.
 
 Ein fehlender typisierter Wert ist einem plausibel wirkenden, aber möglicherweise falschen Wert vorzuziehen.
+
+Für `DhcpLease` sind in v1 ausschließlich die aus dem Legacy-Parser/Fixture-Inventar belegten Felder typisiert:
+
+```text
+address
+mac-address
+client-id
+address-lists
+server
+dhcp-option
+status
+expires-after
+last-seen
+active-address
+active-mac-address
+active-client-id
+active-server
+host-name
+agent-circuit-id / active-agent-circuit-id
+agent-remote-id / active-agent-remote-id
+radius
+dynamic
+blocked
+disabled
+comment
+```
+
+`active-agent-*` hat Vorrang vor dem Legacy-`agent-*`-Feld, wenn beide vorhanden sind. Andere Property-Namen, die zufällig `circuit`, `agent` oder `remote` enthalten, werden nicht heuristisch interpretiert. Unbekannte Varianten bleiben ausschließlich in `raw()`.
+
+`.id` wird in diesem Slice absichtlich nicht als typed `DhcpLease`-Property eingeführt, weil der bisherige DTO-Vertrag es nicht als fachliches Lease-Feld verwendete. Es bleibt vollständig über `raw()` verfügbar.
 
 ## 35. Exceptions
 
