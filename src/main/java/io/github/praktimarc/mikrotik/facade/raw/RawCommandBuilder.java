@@ -36,6 +36,17 @@ public final class RawCommandBuilder {
     }
 
     /**
+     * Adds a valueless RouterOS command flag.
+     *
+     * @param name exact flag name
+     * @return this builder
+     */
+    public RawCommandBuilder flag(String name) {
+        command.flag(name);
+        return this;
+    }
+
+    /**
      * Adds or replaces an equality query.
      *
      * @param name RouterOS query property name
@@ -90,6 +101,17 @@ public final class RawCommandBuilder {
          */
         public Async argument(String name, String value) {
             command.argument(name, value);
+            return this;
+        }
+
+        /**
+         * Adds a valueless RouterOS command flag.
+         *
+         * @param name exact flag name
+         * @return this builder
+         */
+        public Async flag(String name) {
+            command.flag(name);
             return this;
         }
 

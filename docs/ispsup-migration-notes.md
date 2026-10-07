@@ -166,6 +166,22 @@ Async file transfer uses the facade's dedicated bounded blocking executor. Cance
 
 `analyze_SendFileFromGWViaSFTP(fileName)` remains an explicit consumer-side `raw()` fallback if current ISPSup still requires RouterOS `/tool/fetch` SFTP upload. Do not move its destination host, destination path, credentials or environment policy into `mikrotik-facade`.
 
+### Task 17 closes the supplied handler parity inventory
+
+For DHCP pool reporting, call `dhcpServer().pools()` once. Each returned `DhcpPool` represents one real RouterOS pool and may contain multiple range fragments. ISPSup may iterate those fragments for presentation and capacity calculation, but it must keep its `<poolName>-dhcp` naming rule outside the facade. Query utilization with `countLeases(RouterOsProperties.builder().set("server", pool.name() + "-dhcp").build())`; the facade reads RouterOS `count-only` completion metadata safely.
+
+For lease reset, compose `findLeaseByAddress(ip)` with `DhcpLease.id()` and `removeLease(id)`. No matching lease means no remove command. An ambiguous lookup is an error and must not degrade to “remove the last id”.
+
+The existing Task-11 lease lookups by MAC/address now cover the two legacy analysis methods directly. `getLeaseForClientmac` becomes a trivial consumer projection from `findLeaseByMac(mac)` to the optional lease address; do not restore the empty-string sentinel.
+
+Use `wifi().remoteCaps()` or `wifi().findRemoteCapByBaseMac(mac)` for remote CAP discovery. Results are source-aware across enabled legacy and modern managers. Do not recreate the old “empty modern result means try legacy” behavior, and do not issue the unused `/system/routerboard/print`.
+
+Do not migrate `analyze_interfaceWifiConfigsGetByCapsIdentity`: the supplied implementation always returned an empty list into an empty DTO. Likewise do not migrate mutable `getCurrentNasIp` / `setCurrentNasIp`; one facade instance represents one live RouterOS session.
+
+The SFTP upload remains a deliberate structured raw command. Keep destination URL/path/user/password in ISPSup configuration and never log the resulting raw command or credential-bearing values.
+
+The supplied 2026-09-29 handler is fully classified after Task 17. The current GitHub repository for ISPSup still has no application source tree, so re-scanning the then-current real ISPSup callers remains mandatory before the final migration patch.
+
 ## Final migration handoff requirements
 
 After facade stabilization, regenerate the migration handoff from finished facade code and then-current ISPSup source. Per old method include classification, new facade calls, imports, DTO mapping, exception and `Optional` changes, session ownership, compatibility implications, actual callers, tests, and debt to remove.

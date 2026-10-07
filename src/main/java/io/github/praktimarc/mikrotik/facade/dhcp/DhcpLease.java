@@ -111,6 +111,11 @@ public final class DhcpLease implements RouterOsEntity {
         this.comment = nonNull(comment, "comment");
     }
 
+    /** Returns the RouterOS row id when present.
+     * @return optional RouterOS row id
+     */
+    public Optional<String> id() { return raw.find(".id"); }
+
     /** Returns the lease address.
      * @return optional lease address
      */

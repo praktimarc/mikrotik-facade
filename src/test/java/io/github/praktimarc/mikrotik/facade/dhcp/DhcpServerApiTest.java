@@ -1,7 +1,9 @@
 package io.github.praktimarc.mikrotik.facade.dhcp;
 
+import io.github.praktimarc.mikrotik.facade.RouterOsProperties;
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
 import io.github.praktimarc.mikrotik.facade.dhcp.internal.DhcpLeaseMapper;
+import io.github.praktimarc.mikrotik.facade.dhcp.internal.DhcpPoolMapper;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
@@ -75,4 +77,75 @@ class DhcpServerApiTest {
                 IllegalArgumentException.class,
                 () -> DhcpServerApi.findByAddressOperation("", mapper));
     }
+
+    @Test
+    void poolsPreserveOneRouterOsRowAndSplitMultipleRanges() throws Exception {
+        RouterOsOperation<List<DhcpPool>> operation =
+                DhcpServerApi.poolsOperation(new DhcpPoolMapper());
+
+        assertEquals("/ip/pool/print", operation.command().path());
+
+        List<DhcpPool> pools = operation.map(new CommandResult(
+                List.of(RouterOsRecord.of(Map.of(
+                        ".id", "*1",
+                        "name", "customer",
+                        "ranges", "192.0.2.10-192.0.2.20, 192.0.2.30-192.0.2.40",
+                        "next-pool", "none",
+                        "future-field", "kept"))),
+                RouterOsRecord.empty()));
+
+        assertEquals(1, pools.size());
+        assertEquals(
+                List.of("192.0.2.10-192.0.2.20", "192.0.2.30-192.0.2.40"),
+                pools.get(0).ranges());
+        assertEquals("kept", pools.get(0).raw().find("future-field").orElseThrow());
+    }
+
+    @Test
+    void leaseCountUsesValuelessCountOnlyAndTerminalRet() throws Exception {
+        RouterOsOperation<Long> operation = DhcpServerApi.countLeasesOperation(
+                RouterOsProperties.builder().set("server", "customer-dhcp").build());
+
+        assertEquals(List.of("count-only"), operation.command().flags());
+        assertEquals("customer-dhcp", operation.command().queries().get("server"));
+        assertEquals(
+                "/ip/dhcp-server/lease/print count-only where server='customer-dhcp'",
+                operation.command().serialize());
+        assertEquals(
+                17L,
+                operation.map(new CommandResult(
+                        List.of(),
+                        RouterOsRecord.of(Map.of("ret", "17")))));
+    }
+
+    @Test
+    void leaseCountRejectsMissingMalformedAndNegativeRet() {
+        RouterOsOperation<Long> operation = DhcpServerApi.countLeasesOperation(
+                RouterOsProperties.builder().build());
+
+        assertThrows(
+                MikrotikDataException.class,
+                () -> operation.map(new CommandResult(List.of(), RouterOsRecord.empty())));
+        assertThrows(
+                MikrotikDataException.class,
+                () -> operation.map(new CommandResult(
+                        List.of(), RouterOsRecord.of(Map.of("ret", "NaN")))));
+        assertThrows(
+                MikrotikDataException.class,
+                () -> operation.map(new CommandResult(
+                        List.of(), RouterOsRecord.of(Map.of("ret", "-1")))));
+    }
+
+    @Test
+    void removeLeaseUsesExactIdAndLeaseExposesRawId() throws Exception {
+        RouterOsOperation<Void> remove = DhcpServerApi.removeLeaseOperation("*A");
+        assertEquals("/ip/dhcp-server/lease/remove", remove.command().path());
+        assertEquals("*A", remove.command().arguments().get(".id"));
+
+        DhcpLease lease = mapper.map(RouterOsRecord.of(Map.of(
+                ".id", "*A",
+                "address", "192.0.2.10")));
+        assertEquals("*A", lease.id().orElseThrow());
+    }
+
 }

@@ -16,12 +16,14 @@ public final class RouterOsCommand {
 
     private final String path;
     private final Map<String, String> arguments;
+    private final List<String> flags;
     private final Map<String, String> queries;
     private final List<String> properties;
 
     private RouterOsCommand(Builder builder) {
         this.path = validatePath(builder.path);
         this.arguments = immutableOrderedCopy(builder.arguments);
+        this.flags = List.copyOf(builder.flags);
         this.queries = immutableOrderedCopy(builder.queries);
         this.properties = List.copyOf(builder.properties);
     }
@@ -39,6 +41,11 @@ public final class RouterOsCommand {
     /** Returns immutable arguments in insertion order. */
     public Map<String, String> arguments() {
         return arguments;
+    }
+
+    /** Returns immutable valueless command flags in insertion order. */
+    public List<String> flags() {
+        return flags;
     }
 
     /** Returns immutable equality queries in insertion order. */
@@ -63,6 +70,7 @@ public final class RouterOsCommand {
                 .append(key)
                 .append('=')
                 .append(quote(value)));
+        flags.forEach(flag -> command.append(' ').append(flag));
         if (!queries.isEmpty()) {
             command.append(" where ");
             boolean first = true;
@@ -92,6 +100,7 @@ public final class RouterOsCommand {
     public String toString() {
         String rendered = CommandDiagnosticRenderer.render(path, arguments, queries);
         return rendered.substring(0, rendered.length() - 1)
+                + ", flags=" + flags
                 + ", properties=" + properties + '}';
     }
 
@@ -153,6 +162,7 @@ public final class RouterOsCommand {
     public static final class Builder {
         private final String path;
         private final LinkedHashMap<String, String> arguments = new LinkedHashMap<>();
+        private final List<String> flags = new ArrayList<>();
         private final LinkedHashMap<String, String> queries = new LinkedHashMap<>();
         private final List<String> properties = new ArrayList<>();
 
@@ -163,6 +173,15 @@ public final class RouterOsCommand {
         /** Adds or replaces an argument. */
         public Builder argument(String key, String value) {
             arguments.put(validateName(key, "argument name"), Objects.requireNonNull(value, "value"));
+            return this;
+        }
+
+        /** Adds one valueless command flag, preserving insertion order. */
+        public Builder flag(String name) {
+            String validated = validateName(name, "flag name");
+            if (!flags.contains(validated)) {
+                flags.add(validated);
+            }
             return this;
         }
 

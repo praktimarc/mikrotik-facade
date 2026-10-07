@@ -1727,6 +1727,41 @@ Beim kontrollierten `close()` wird der File-Executor zuerst für neue Arbeit ges
 
 Das alte ISPSup-`/tool/fetch`-SFTP-Uploadverhalten bleibt bewusst außerhalb des Files-Moduls: Zielhost, Zielpfad und Upload-Policy sind Consumer-Konfiguration und können bei weiterhin bestehendem Bedarf über `raw()` zusammengesetzt werden.
 
+## 42a. Task-17 parity closure
+
+Task 17 adds the last typed primitives required by the supplied legacy-handler inventory.
+
+DHCP gains:
+
+```java
+mtApi.dhcpServer().pools();
+mtApi.dhcpServer().countLeases(properties);
+mtApi.dhcpServer().removeLease(id);
+```
+
+`RouterOsCommand` and the structured raw builder support valueless command flags. This is used for RouterOS `count-only`; terminal `ret` is consumed from `CommandResult.completion()` and never by textual line position. `DhcpPool` preserves one RouterOS pool row and exposes exact range fragments without calculating addresses or inventing ISPSup server naming.
+
+`DhcpLease.id()` is an additive view over the retained raw `.id`. Lease reset remains consumer composition: expected-single lookup by address followed by removal only when a row exists. Empty lookup never emits a remove with an empty id, and ambiguous lookup stays a data error.
+
+WiFi gains:
+
+```java
+mtApi.wifi().remoteCaps();
+mtApi.wifi().findRemoteCapByBaseMac(mac);
+```
+
+Remote-CAP authority is driven only by enabled CAPsMAN managers. Legacy `/caps-man/remote-cap` and modern `/interface/wifi/capsman/remote-cap` can be simultaneously relevant and then use `COMPOSITE`. No empty-result fallback exists. `WifiRemoteCap` retains source provenance and normalizes the verified `board-name` / `board` alias while preserving every original field.
+
+Parity closure explicitly distinguishes three terminal states:
+
+```text
+IMPLEMENTED
+ACCEPTED_RAW_FALLBACK
+INTENTIONALLY_OBSOLETE
+```
+
+The SFTP upload path remains `ACCEPTED_RAW_FALLBACK`: structured `raw().command("/tool/fetch")` can express `upload=yes` and `src-path`, while destination host/path/credentials remain consumer configuration. The non-functional WiFi-config stub and mutable current-router accessors are `INTENTIONALLY_OBSOLETE`.
+
 ## 43. Logging
 
 Die Facade verwendet:

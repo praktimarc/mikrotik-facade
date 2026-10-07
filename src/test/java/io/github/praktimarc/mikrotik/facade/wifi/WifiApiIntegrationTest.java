@@ -4,9 +4,11 @@ import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsPackage;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsSystemInfo;
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
 import io.github.praktimarc.mikrotik.facade.internal.capability.CapabilityRegistry;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
+import io.github.praktimarc.mikrotik.facade.wifi.internal.RemoteCapsSourceResolver;
 import me.legrange.mikrotik.ApiConnection;
 import me.legrange.mikrotik.ApiConnectionException;
 import me.legrange.mikrotik.MikrotikApiException;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class WifiApiIntegrationTest {
 
@@ -129,6 +132,108 @@ class WifiApiIntegrationTest {
         }
     }
 
+
+
+    @Test
+    void remoteCapsUseOnlyEnabledManagerSourcesAndEmptyModernDoesNotFallback() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/caps-man/manager/print", rows(row("enabled", "false")),
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/remote-cap/print", rows()));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            WifiApi api = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment("7.20.4", List.of("wireless")),
+                    new CapabilityRegistry());
+
+            assertTrue(api.remoteCaps().isEmpty());
+            assertFalse(connection.commands().contains("/caps-man/remote-cap/print"));
+        }
+    }
+
+    @Test
+    void bothEnabledManagersProduceCompositeRemoteCapsWithProvenance() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/caps-man/manager/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/caps-man/remote-cap/print", rows(row(
+                        ".id", "*L",
+                        "identity", "legacy-cap",
+                        "base-mac", "AA:BB:CC:DD:EE:01",
+                        "board", "legacy-board")),
+                "/interface/wifi/capsman/remote-cap/print", rows(row(
+                        ".id", "*M",
+                        "identity", "modern-cap",
+                        "base-mac", "AA:BB:CC:DD:EE:02",
+                        "board-name", "modern-board"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            WifiApi api = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment("7.20.4", List.of("wireless")),
+                    new CapabilityRegistry());
+
+            List<WifiRemoteCap> caps = api.remoteCaps();
+
+            assertEquals(2, caps.size());
+            assertEquals("/caps-man/remote-cap", caps.get(0).source());
+            assertEquals("/interface/wifi/capsman/remote-cap", caps.get(1).source());
+            assertEquals("legacy-board", caps.get(0).boardName().orElseThrow());
+            assertEquals("modern-board", caps.get(1).boardName().orElseThrow());
+        }
+    }
+
+    @Test
+    void expectedSingleRemoteCapRejectsAmbiguousCompositeMatch() throws Exception {
+        String queryLegacy =
+                "/caps-man/remote-cap/print where base-mac='AA:BB:CC:DD:EE:FF'";
+        String queryModern =
+                "/interface/wifi/capsman/remote-cap/print where base-mac='AA:BB:CC:DD:EE:FF'";
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/caps-man/manager/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                queryLegacy, rows(row("identity", "legacy", "base-mac", "AA:BB:CC:DD:EE:FF")),
+                queryModern, rows(row("identity", "modern", "base-mac", "AA:BB:CC:DD:EE:FF"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            WifiApi api = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment("7.20.4", List.of("wireless")),
+                    new CapabilityRegistry());
+
+            assertThrows(
+                    MikrotikDataException.class,
+                    () -> api.findRemoteCapByBaseMac("AA:BB:CC:DD:EE:FF"));
+        }
+    }
+
+    @Test
+    void asyncRemoteCapsUsesSameCompositeResolution() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/caps-man/manager/print", rows(row("enabled", "false")),
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/remote-cap/print", rows(row(
+                        "identity", "modern-cap",
+                        "base-mac", "AA:BB:CC:DD:EE:02"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            AsyncWifiApi api = new AsyncWifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    Runnable::run,
+                    environment("7.20.4", List.of("wireless")),
+                    new CapabilityRegistry());
+
+            List<WifiRemoteCap> caps = api.remoteCaps().get(2, TimeUnit.SECONDS);
+
+            assertEquals(1, caps.size());
+            assertEquals(RemoteCapsSourceResolver.MODERN_SOURCE, caps.get(0).source());
+        }
+    }
     private static RouterOsEnvironment environment(String version, List<String> packages) {
         RouterOsSystemInfo system = new RouterOsSystemInfo(
                 version, "arm64", "test-board", "MikroTik", RouterOsRecord.empty());

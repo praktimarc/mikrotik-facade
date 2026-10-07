@@ -837,10 +837,36 @@ documented obsolete behavior
 
 Tests:
 
-- [ ] no intended old-handler behavior remains unaccounted for.
-- [ ] no row is marked complete solely because `raw()` technically exists unless `RAW_FALLBACK` was explicitly accepted.
-- [ ] every known compatibility-dependent row points to catalog documentation and a test/fixture.
-- [ ] old bugs/workarounds have migration notes.
+- [x] no intended old-handler behavior remains unaccounted for.
+- [x] no row is marked complete solely because `raw()` technically exists unless `RAW_FALLBACK` was explicitly accepted.
+- [x] every known compatibility-dependent row points to catalog documentation and a test/fixture.
+- [x] old bugs/workarounds have migration notes.
+
+
+Task 17 closes every parity row from the supplied 2026-09-29 handler snapshot.
+
+New facade primitives:
+
+```text
+dhcpServer().pools()
+dhcpServer().countLeases(properties)
+dhcpServer().removeLease(id)
+
+wifi().remoteCaps()
+wifi().findRemoteCapByBaseMac(mac)
+
+async mirrors for all finite operations
+```
+
+`RouterOsCommand` now supports explicit valueless flags such as `count-only`; the raw command builder exposes the same primitive. DHCP lease counts read terminal `ret` structurally. Pool rows are preserved one-for-one and expose comma-separated RouterOS ranges as an immutable list; ISPSup-specific pool splitting, capacity arithmetic and `<poolName>-dhcp` naming remain consumer composition.
+
+Remote CAPs use manager-driven source resolution. Enabled legacy and modern CAPsMAN managers can both be authoritative, producing `COMPOSITE` results with exact provenance. A successful empty modern remote-CAP result never triggers legacy fallback. Known `board-name` / `board` aliases normalize to one typed field; raw data remains complete.
+
+The legacy WiFi-config method is intentionally obsolete because it always returned an empty list into an empty DTO. Mutable current-NAS getter/setter behavior is also intentionally obsolete because a facade session is bound to one connection endpoint. RouterOS-to-SFTP upload is an accepted structured `raw()` fallback; Task 17 verifies that `/tool/fetch` upload arguments can be expressed without adding ISPSup destination policy to the facade.
+
+Terminal parity statuses are now restricted to `IMPLEMENTED`, `ACCEPTED_RAW_FALLBACK`, and `INTENTIONALLY_OBSOLETE`. A parity gate test rejects any remaining table row outside those statuses.
+
+The current connected `praktimarc/ISPSup` repository still contains only a README, so the final re-scan of current production callers remains a separate migration gate and is not evidence against facade parity completion.
 
 ---
 

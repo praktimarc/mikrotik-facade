@@ -24,6 +24,22 @@ class RouterOsCommandTest {
     }
 
     @Test
+    void serializesValuelessFlagsBeforeQueries() {
+        RouterOsCommand command = RouterOsCommand.builder("/ip/dhcp-server/lease/print")
+                .flag("count-only")
+                .query("server", "pool-dhcp")
+                .build();
+
+        assertEquals(
+                "/ip/dhcp-server/lease/print count-only where server='pool-dhcp'",
+                command.serialize());
+        assertEquals(java.util.List.of("count-only"), command.flags());
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> command.flags().add("detail"));
+    }
+
+    @Test
     void commandIsImmutableSnapshotAndDiagnosticsRedactSecrets() {
         RouterOsCommand command = RouterOsCommand.builder("/user/add")
                 .argument("name", "alice")
