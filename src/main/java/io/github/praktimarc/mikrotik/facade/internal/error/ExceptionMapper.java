@@ -77,6 +77,7 @@ public final class ExceptionMapper {
         Integer category = failure.hasCategory() ? failure.getCategory() : null;
         String safePath = CommandDiagnosticRenderer.safeCommandPath(commandPath);
         String safeRouterOsMessage = CommandDiagnosticRenderer.sanitizeRouterOsMessage(
+                commandPath,
                 failure.getMessage(),
                 arguments,
                 queries);

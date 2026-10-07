@@ -33,6 +33,33 @@ class CommandDiagnosticRendererTest {
     }
 
     @Test
+    void snmpCommunityNameIsRedactedOnlyInCommunityContext() {
+        String sensitive = CommandDiagnosticRenderer.render(
+                "/snmp/community/set",
+                Map.of("name", "private-community"),
+                Map.of());
+        String ordinary = CommandDiagnosticRenderer.render(
+                "/interface/set",
+                Map.of("name", "ether1"),
+                Map.of());
+
+        assertFalse(sensitive.contains("private-community"));
+        assertTrue(sensitive.contains("name=<redacted>"));
+        assertTrue(ordinary.contains("name=ether1"));
+    }
+
+    @Test
+    void snmpCommunityNameIsRemovedFromRouterOsMessages() {
+        String rendered = CommandDiagnosticRenderer.sanitizeRouterOsMessage(
+                "/snmp/community/set",
+                "invalid community private-community",
+                Map.of("name", "private-community"),
+                Map.of());
+        assertFalse(rendered.contains("private-community"));
+        assertTrue(rendered.contains("<redacted>"));
+    }
+
+    @Test
     void commandPathNeverIncludesArgumentsOrQueries() {
         assertEquals("/ip/user/add",
                 CommandDiagnosticRenderer.safeCommandPath("/ip/user/add =password=secret"));

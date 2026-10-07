@@ -148,6 +148,14 @@ Interface and monitor DTO migration should treat hardware-/driver-dependent coun
 
 Long-running traffic monitoring is Flow-based. ISPSup must retain and cancel the returned `Flow.Subscription` when its consumer no longer needs updates. Closing the owning `MikrotikRtrApi` session also cancels active monitor subscriptions before the connection is closed.
 
+### Task 15 Queue, SNMP and Ping primitives now available
+
+For the legacy PCQ report, use `queue().type().find(RouterOsProperties.builder().set("default", "no").build())`. Do not assume every queue type is PCQ. PCQ rate/limit/burst quantities are returned losslessly as strings because legitimate RouterOS formatting can include units; ISPSup may convert the exact values for its report where appropriate.
+
+Replace `util_changeSNMPV3UserToWrite(userName)` with explicit consumer policy: locate the intended community through `snmp().findCommunityByName(...)`, require/use its RouterOS id, then call `snmp().setWriteAccess(id, true)`. The facade does not hard-code `admin`, ignores no user argument, opens no helper session, and returns no `MethodCallResult`. Community credentials remain sensitive; avoid logging `raw()` community records.
+
+Replace `pingAClient(ip)` with `system().ping(new PingRequest(ip, 10, Duration.ofMillis(500)))`. Convert the typed `PingResult` to the existing RPC DTO at the ISPSup boundary if that DTO must remain temporarily. Timeout/unreachable/packet loss are result data, not transport exceptions. Do not clamp packet-loss to 0..100 because RouterOS multicast ping can legitimately produce negative percentages when several hosts reply to one request.
+
 ## Final migration handoff requirements
 
 After facade stabilization, regenerate the migration handoff from finished facade code and then-current ISPSup source. Per old method include classification, new facade calls, imports, DTO mapping, exception and `Optional` changes, session ownership, compatibility implications, actual callers, tests, and debt to remove.

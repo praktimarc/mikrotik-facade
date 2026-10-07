@@ -84,6 +84,19 @@ class ExceptionMapperTest {
         assertSame(lowLevel, mapped.getCause());
     }
 
+    @Test
+    void commandExceptionRedactsSnmpCommunityNameByPath() {
+        MikrotikCommandException mapped = ExceptionMapper.mapCommand(
+                new TestCommandException("community private-community rejected", 4),
+                "set SNMP community",
+                "/snmp/community/set",
+                Map.of("name", "private-community"),
+                Map.of());
+
+        assertFalse(mapped.routerOsMessage().orElseThrow().contains("private-community"));
+        assertTrue(mapped.routerOsMessage().orElseThrow().contains("<redacted>"));
+    }
+
     private static final class TestCommandException extends ApiCommandException {
         private TestCommandException(String message, Integer category) {
             super(message, "transport-tag", category);

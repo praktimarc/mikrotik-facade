@@ -708,13 +708,38 @@ system/...
 
 Rules:
 
-- [ ] no blindly mirrored CLI tree.
-- [ ] stable concepts typed.
-- [ ] flexible or volatile RouterOS properties remain accessible through raw data/property writes.
-- [ ] schema compatibility rules documented in `routeros-compatibility.md`.
-- [ ] every relevant old-handler parity row covered by tests.
+- [x] no blindly mirrored CLI tree.
+- [x] stable concepts typed.
+- [x] flexible or volatile RouterOS properties remain accessible through raw data/property writes.
+- [x] schema compatibility rules documented in `routeros-compatibility.md`.
+- [x] every relevant old-handler parity row covered by tests.
 
 If the parity matrix shows that one of these areas is large enough for an independent review unit, split this task before implementation rather than creating oversized classes.
+
+
+Finalized Task-15 surface:
+
+```text
+mtApi.queue().type().list()
+mtApi.queue().type().find(properties)
+mtApi.snmp().communities()
+mtApi.snmp().findCommunityByName(name)
+mtApi.snmp().setCommunityProperties(id, properties)
+mtApi.snmp().setWriteAccess(id, enabled)
+mtApi.system().ping(request)
+
+mtApi.async().queue().type()...
+mtApi.async().snmp()...
+mtApi.async().system().ping(request)
+```
+
+Queue-type mapping keeps RouterOS rate/limit/burst quantities lossless as strings because legitimate RouterOS renderings can contain unit suffixes such as `KiB`; stable masks, booleans and burst-time are typed. PCQ fields remain optional for non-PCQ queue kinds and every source property remains in `raw()`.
+
+SNMP exposes communities rather than the misleading legacy “SNMPv3 user” naming. The legacy hard-coded `admin` policy stays in ISPSup. Community lookup reads the typed community list and filters locally so the community value is not placed into a command query. Generic property writes and `setWriteAccess` reuse the same authenticated session. Credential-bearing authentication/encryption password fields have no typed getters and remain available only through `raw()`. Diagnostics additionally treat the `name` argument as sensitive specifically for `/snmp/community/...` paths.
+
+Ping requests are always finite because `count > 0` is mandatory. Optional intervals must be positive whole milliseconds. `PingResult` retains all reply/status records and uses the latest usable cumulative summary from normal records, or terminal completion properties when supplied by the transport. 100% loss is normal data. RouterOS multicast semantics can produce `received > sent` and negative packet-loss percentages, so those values are preserved rather than rejected.
+
+Maven is not installed in the execution environment; exact Maven/JUnit verification is therefore still performed through the project's usual external build when available.
 
 ---
 

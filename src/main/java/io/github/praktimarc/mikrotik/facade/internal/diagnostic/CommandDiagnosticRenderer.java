@@ -25,8 +25,8 @@ public final class CommandDiagnosticRenderer {
             Map<String, String> arguments,
             Map<String, String> queries) {
         String path = safeCommandPath(commandPath);
-        Map<String, String> safeArguments = SecretRedactor.redactMap(nonNullMap(arguments));
-        Map<String, String> safeQueries = SecretRedactor.redactMap(nonNullMap(queries));
+        Map<String, String> safeArguments = redactForPath(path, nonNullMap(arguments));
+        Map<String, String> safeQueries = redactForPath(path, nonNullMap(queries));
         return "RouterOsCommand{path=" + path
                 + ", arguments=" + safeArguments
                 + ", queries=" + safeQueries
@@ -74,10 +74,52 @@ public final class CommandDiagnosticRenderer {
             String message,
             Map<String, String> arguments,
             Map<String, String> queries) {
-        return SecretRedactor.redactText(
-                message,
-                nonNullMap(arguments),
-                nonNullMap(queries));
+        return sanitizeRouterOsMessage(null, message, arguments, queries);
+    }
+
+    /**
+     * Sanitizes a RouterOS message using command-path-specific secret knowledge.
+     *
+     * @param commandPath RouterOS command path or raw command string
+     * @param message RouterOS or low-level message
+     * @param arguments command arguments used only for redaction
+     * @param queries command queries used only for redaction
+     * @return sanitized message, or null
+     */
+    public static String sanitizeRouterOsMessage(
+            String commandPath,
+            String message,
+            Map<String, String> arguments,
+            Map<String, String> queries) {
+        Map<String, String> rawArguments = nonNullMap(arguments);
+        Map<String, String> rawQueries = nonNullMap(queries);
+        String safe = message;
+        if (isSnmpCommunityPath(safeCommandPath(commandPath))) {
+            safe = redactNamedValue(safe, rawArguments.get("name"));
+            safe = redactNamedValue(safe, rawQueries.get("name"));
+        }
+        return SecretRedactor.redactText(safe, rawArguments, rawQueries);
+    }
+
+    private static Map<String, String> redactForPath(String path, Map<String, String> values) {
+        Map<String, String> safe = SecretRedactor.redactMap(values);
+        if (!isSnmpCommunityPath(path) || !safe.containsKey("name")) {
+            return safe;
+        }
+        LinkedHashMap<String, String> copy = new LinkedHashMap<>(safe);
+        copy.put("name", SecretRedactor.REDACTED);
+        return java.util.Collections.unmodifiableMap(copy);
+    }
+
+    private static boolean isSnmpCommunityPath(String path) {
+        return path != null && (path.equals("/snmp/community") || path.startsWith("/snmp/community/"));
+    }
+
+    private static String redactNamedValue(String text, String value) {
+        if (text == null || value == null || value.isEmpty()) {
+            return text;
+        }
+        return text.replace(value, SecretRedactor.REDACTED);
     }
 
     private static Map<String, String> nonNullMap(Map<String, String> values) {

@@ -3,7 +3,10 @@ package io.github.praktimarc.mikrotik.facade.async;
 import io.github.praktimarc.mikrotik.facade.dhcp.AsyncDhcpServerApi;
 import io.github.praktimarc.mikrotik.facade.firewall.AsyncFirewallApi;
 import io.github.praktimarc.mikrotik.facade.interfaces.AsyncInterfacesApi;
+import io.github.praktimarc.mikrotik.facade.queue.AsyncQueueApi;
 import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
+import io.github.praktimarc.mikrotik.facade.snmp.AsyncSnmpApi;
+import io.github.praktimarc.mikrotik.facade.system.AsyncSystemApi;
 import io.github.praktimarc.mikrotik.facade.wifi.AsyncWifiApi;
 
 import java.util.Objects;
@@ -18,6 +21,9 @@ public final class AsyncMikrotikRtrApi {
     private final AsyncFirewallApi firewall;
     private final AsyncWifiApi wifi;
     private final AsyncInterfacesApi interfaces;
+    private final AsyncQueueApi queue;
+    private final AsyncSnmpApi snmp;
+    private final AsyncSystemApi system;
 
     /**
      * Creates the asynchronous facade tree for session wiring.
@@ -27,18 +33,27 @@ public final class AsyncMikrotikRtrApi {
      * @param firewall asynchronous firewall API
      * @param wifi asynchronous WiFi/CAPsMAN API
      * @param interfaces asynchronous interface/address API
+     * @param queue asynchronous queue API
+     * @param snmp asynchronous SNMP API
+     * @param system asynchronous system/diagnostic API
      */
     public AsyncMikrotikRtrApi(
             AsyncRawApi raw,
             AsyncDhcpServerApi dhcpServer,
             AsyncFirewallApi firewall,
             AsyncWifiApi wifi,
-            AsyncInterfacesApi interfaces) {
+            AsyncInterfacesApi interfaces,
+            AsyncQueueApi queue,
+            AsyncSnmpApi snmp,
+            AsyncSystemApi system) {
         this.raw = Objects.requireNonNull(raw, "raw");
         this.dhcpServer = Objects.requireNonNull(dhcpServer, "dhcpServer");
         this.firewall = Objects.requireNonNull(firewall, "firewall");
         this.wifi = Objects.requireNonNull(wifi, "wifi");
         this.interfaces = Objects.requireNonNull(interfaces, "interfaces");
+        this.queue = Objects.requireNonNull(queue, "queue");
+        this.snmp = Objects.requireNonNull(snmp, "snmp");
+        this.system = Objects.requireNonNull(system, "system");
     }
 
     /**
@@ -80,5 +95,20 @@ public final class AsyncMikrotikRtrApi {
     /** Returns the asynchronous typed interface/address API. */
     public AsyncInterfacesApi interfaces() {
         return interfaces;
+    }
+
+    /** Returns the asynchronous typed queue API. */
+    public AsyncQueueApi queue() {
+        return queue;
+    }
+
+    /** Returns the asynchronous typed SNMP API. */
+    public AsyncSnmpApi snmp() {
+        return snmp;
+    }
+
+    /** Returns the asynchronous typed system/diagnostic API. */
+    public AsyncSystemApi system() {
+        return system;
     }
 }
