@@ -4,6 +4,8 @@ import io.github.praktimarc.mikrotik.facade.async.AsyncMikrotikRtrApi;
 import io.github.praktimarc.mikrotik.facade.dhcp.AsyncDhcpServerApi;
 import io.github.praktimarc.mikrotik.facade.dhcp.DhcpServerApi;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
+import io.github.praktimarc.mikrotik.facade.firewall.AsyncFirewallApi;
+import io.github.praktimarc.mikrotik.facade.firewall.FirewallApi;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
@@ -41,6 +43,7 @@ public final class MikrotikRtrApi implements AutoCloseable {
     private final CommandEngine commandEngine;
     private final RawApi raw;
     private final DhcpServerApi dhcpServer;
+    private final FirewallApi firewall;
     private final AsyncMikrotikRtrApi async;
 
     MikrotikRtrApi(ApiConnection connection, SessionLifecycle lifecycle, RouterOsEnvironment environment, Executor configuredCallbackExecutor) {
@@ -66,15 +69,18 @@ public final class MikrotikRtrApi implements AutoCloseable {
         this.commandEngine=new CommandEngine(connection,commandTimeout,dispatchExecutor,callbackExecutor,timeoutScheduler);
         this.raw=new RawApi(commandEngine,lifecycle);
         this.dhcpServer=new DhcpServerApi(commandEngine,lifecycle);
+        this.firewall=new FirewallApi(commandEngine,lifecycle);
         this.async=new AsyncMikrotikRtrApi(
                 new AsyncRawApi(commandEngine,lifecycle,callbackExecutor),
-                new AsyncDhcpServerApi(commandEngine,lifecycle,callbackExecutor));
+                new AsyncDhcpServerApi(commandEngine,lifecycle,callbackExecutor),
+                new AsyncFirewallApi(commandEngine,lifecycle,callbackExecutor));
     }
 
     public static MikrotikRtrApiBuilder builder(){return new MikrotikRtrApiBuilder();}
     public RouterOsEnvironment environment(){return environment;}
     public RawApi raw(){return raw;}
     public DhcpServerApi dhcpServer(){return dhcpServer;}
+    public FirewallApi firewall(){return firewall;}
     public AsyncMikrotikRtrApi async(){return async;}
 
     @Override public void close() throws MikrotikConnectionException {

@@ -569,11 +569,29 @@ getFirewallStateForClientIP
 
 Tests:
 
-- [ ] Generic typed/property-based Filter, Mangle and Address List querying.
-- [ ] empty result is normal.
-- [ ] common stable mutations have convenience methods where justified by the parity inventory.
-- [ ] flexible rule creation uses `RouterOsProperties`.
-- [ ] raw data remains attached to every typed rule.
+- [x] Generic typed/property-based Filter, Mangle and Address List querying.
+- [x] empty result is normal.
+- [x] common stable mutations have convenience methods where justified by the parity inventory.
+- [x] flexible rule creation uses `RouterOsProperties`.
+- [x] raw data remains attached to every typed rule.
+
+Finalized Task-12 surface:
+
+```java
+mtApi.firewall().filter()
+mtApi.firewall().mangle()
+mtApi.firewall().addressList()
+
+mtApi.async().firewall().filter()
+mtApi.async().firewall().mangle()
+mtApi.async().firewall().addressList()
+```
+
+Reads use equality properties via `RouterOsProperties`; flexible adds use the same property model and expose terminal `ret` as `Optional<String>`. Filter and Mangle provide `setDisabled(id, state)`; Mangle additionally provides `remove(id)`. No ISPSup-specific `active-clients` or global access-system semantics are embedded in the facade.
+
+The legacy `getFireWallStateForClientIp` query used `address-list` under `/ip/firewall/address-list`. Task 12 corrects this to the RouterOS entry property `list`; `address-list` remains a separate firewall rule matcher/action property and is not used for address-list membership lookup.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. The controlled Task-12 runtime harness passes 12/12 scenarios. The five final JUnit sources contain 13 test methods and compile against the verified signatures. Production sources compile for Java 17 without production warnings and Javadoc/doclint completes without warnings.
 
 ---
 

@@ -146,6 +146,26 @@ CompletableFuture<Optional<DhcpLease>> asyncByAddress =
 
 Beide Bäume verwenden dieselbe `CommandEngine`, denselben Session-Lifecycle und dieselbe Mapping-Operation. 0 Treffer sind ein normales leeres `Optional`; mehr als ein Treffer bei diesen expected-single Lookups ist inkonsistente RouterOS-Datenlage und führt zu `MikrotikDataException`.
 
+Task 12 finalisiert den Firewall-Baum als allgemeine RouterOS-Primitiven:
+
+```java
+mtApi.firewall().filter()
+mtApi.firewall().mangle()
+mtApi.firewall().addressList()
+
+mtApi.async().firewall().filter()
+mtApi.async().firewall().mangle()
+mtApi.async().firewall().addressList()
+```
+
+Filter, Mangle und Address List unterstützen generische Equality-Queries über `RouterOsProperties`. Leere Resultsets sind normale leere Listen. Filter- und Mangle-Regeln werden als `FirewallRule` mit belegten stabilen Legacy-Feldern plus vollständigem `raw()` geliefert; Address-List-Einträge verwenden ein eigenes `AddressListEntry`.
+
+Flexible `add(...)`-Operationen verwenden `RouterOsProperties` und geben terminales `ret` als `Optional<String>` zurück. Stabile Mutationen werden nur dort als Convenience angeboten, wo die Parity-Matrix sie rechtfertigt: `setDisabled(id, boolean)` für Filter/Mangle und `remove(id)` für Mangle.
+
+Der alte Workaround, vor einem Mangle-`set` eine neue RouterOS-Verbindung zu öffnen, wird nicht übernommen. Alle Reads und Writes laufen über dieselbe gesunde Session und dieselbe Command Engine.
+
+Bei `/ip/firewall/address-list` heißt die Gruppierungs-Property `list`. Der alte ISPSup-Query mit `address-list` wird nicht reproduziert. Die festen Bedeutungen von `active-clients` und `disable access system temporarily` bleiben Consumer-Policy.
+
 statt einer künstlichen Abbildung wie:
 
 ```java

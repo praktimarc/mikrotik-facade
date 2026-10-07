@@ -44,6 +44,14 @@ The status describes the evidence available to this project. It is not a claim t
 | File download | RouterOS-version dependent | RouterOS file API / low-level binary download support | `CONDITIONAL` | version-dependent file capabilities | `OBSERVED` | Prefer the verified low-level binary implementation where supported; raw fallback only when older RouterOS support is explicitly proven necessary. | Task 15 fixture required |
 | `/system/package` bootstrap knowledge | systems where package listing is available or explicitly unavailable | `/system/package` | `SINGLE` | available empty list vs unavailable information | `OBSERVED` | `Optional.of(emptyList())` and unavailable package information are distinct states. | Task 5 coverage |
 
+## Firewall compatibility
+
+| Facade function / topic | RouterOS source | Strategy | Typed fields / semantics | Evidence | Rule | Fixture/test status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Firewall filter rules | `/ip/firewall/filter/print` | `SINGLE` | `.id`, chain, protocol, src/dst address, src/dst port, in/out interface and interface-list, bytes, packets, invalid, dynamic, disabled, comment | `LEGACY_OBSERVED` | Unknown properties remain in `raw()`; empty result is valid. | Task 12 covered |
+| Firewall Mangle rules | `/ip/firewall/mangle/print` | `SINGLE` | same proven rule surface as filter | `LEGACY_OBSERVED` | Generic layer does not deduplicate rows/ids. Mangle remove/set use exact RouterOS `.id`. | Task 12 covered |
+| Firewall Address List | `/ip/firewall/address-list/print` | `SINGLE` | `.id`, `list`, address, timeout, creation-time, dynamic, disabled, comment | `DOCUMENTED` + observed | Membership query uses `list`, not the legacy handler's `address-list` key. `address-list` is a different firewall-rule matcher/action property. | Task 12 covered |
+
 ## Capability probe rules
 
 Active capability probes in v1 are read-only RouterOS `/print` commands. Definitive `SUPPORTED` and `UNSUPPORTED` results may be cached for the authenticated session. `UNKNOWN` is never negatively cached, and technical probe failures leave capability state unchanged so a later operation may retry or use other compatibility knowledge.

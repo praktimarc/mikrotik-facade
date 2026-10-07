@@ -118,6 +118,16 @@ Mangle remains required by separate reset/global-state methods.
 
 The comment `disable access system temporarily` identifies a Mangle rule. Old semantics treat a disabled rule as an active access system, so `setFireWallActivatedOnTheNas(true)` writes `disabled=true`. The facade exposes the rule and `setDisabled`; the inversion belongs to ISPSup and needs consumer tests.
 
+### Task 12 firewall primitives now available
+
+The facade now exposes `firewall().filter()`, `firewall().mangle()` and `firewall().addressList()` with mirrored async APIs. ISPSup should compose its existing business behavior from these generic primitives.
+
+For client firewall state, query the address-list entry properties `list=active-clients` and `address=<client>`. Do not preserve the old handler's `address-list=active-clients` query key.
+
+For the global access-system convention, find Mangle rules by the existing comment in ISPSup and interpret/invert `disabled` there. For client reset, ISPSup may explicitly deduplicate ids collected from src/dst lookups if that is the desired business behavior; the facade itself does not perform speculative deduplication.
+
+Mangle `setDisabled` and `remove` reuse the current authenticated facade session. The historical helper that opened a new handler before writes is obsolete and must not be migrated.
+
 ## Final migration handoff requirements
 
 After facade stabilization, regenerate the migration handoff from finished facade code and then-current ISPSup source. Per old method include classification, new facade calls, imports, DTO mapping, exception and `Optional` changes, session ownership, compatibility implications, actual callers, tests, and debt to remove.
