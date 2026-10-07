@@ -663,12 +663,34 @@ interfaces/internal/...
 
 Tests:
 
-- [ ] normal typed interface reads.
-- [ ] hardware-/driver-dependent optional counters.
-- [ ] absent counter is not a parsing error unless contract says required.
-- [ ] unknown counters remain in `raw()`.
-- [ ] monitoring uses the shared Flow engine.
-- [ ] monitor cancellation maps to RouterOS cancellation.
+- [x] normal typed interface reads.
+- [x] hardware-/driver-dependent optional counters.
+- [x] absent counter is not a parsing error unless contract says required.
+- [x] unknown counters remain in `raw()`.
+- [x] monitoring uses the shared Flow engine.
+- [x] monitor cancellation maps to RouterOS cancellation.
+
+
+Finalized Task-14 surface:
+
+```text
+mtApi.interfaces().list()
+mtApi.interfaces().list(properties)
+mtApi.interfaces().addresses()
+mtApi.interfaces().addresses(properties)
+mtApi.interfaces().monitor(interfaceName)
+
+mtApi.async().interfaces().list(...)
+mtApi.async().interfaces().addresses(...)
+```
+
+`InterfaceInfo`, `InterfaceAddress`, and `InterfaceMonitorEntry` are immutable `RouterOsEntity` types that preserve every received property through `raw()`. Only the semantically required interface name and IP address value are required; hardware-, driver-, and RouterOS-version-dependent counters/flags remain optional. Present malformed typed values still fail with `MikrotikDataException`.
+
+Monitoring is a cold `Flow.Publisher` backed by the existing `RouterOsPublisher` engine and the continuous `/interface/monitor-traffic` command. The per-subscription bounded queue is 64 records. Flow cancellation maps to the existing RouterOS tag cancellation path. A session-scoped `StreamRegistry` makes controlled `MikrotikRtrApi.close()` cancel active monitor subscriptions before finite commands and also closes the race where registration happens after close has begun.
+
+`interfaces().addresses(...)` provides the reusable primitive required by ISPSup `getCMTSIp()`; the fixed `cmts-internal` comment and last-octet-minus-one rule remain consumer policy and are not encoded in the facade.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven/JUnit command remains pending. All Task-14 production and JUnit sources compile under `javac --release 17` against verified/signature-compatible surfaces. A focused runtime harness passes 9/9 mapping, optional-counter, raw-preservation, query-path, and stream-registry scenarios. The integration tests additionally cover cold monitoring, sample mapping, tag cancellation, and session-close cancellation when run under the project JUnit environment.
 
 ---
 

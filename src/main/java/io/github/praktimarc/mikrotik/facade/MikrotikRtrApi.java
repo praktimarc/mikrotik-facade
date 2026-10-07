@@ -7,9 +7,12 @@ import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.firewall.AsyncFirewallApi;
 import io.github.praktimarc.mikrotik.facade.firewall.FirewallApi;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
+import io.github.praktimarc.mikrotik.facade.interfaces.AsyncInterfacesApi;
+import io.github.praktimarc.mikrotik.facade.interfaces.InterfacesApi;
 import io.github.praktimarc.mikrotik.facade.internal.capability.CapabilityRegistry;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
+import io.github.praktimarc.mikrotik.facade.internal.stream.StreamRegistry;
 import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
 import io.github.praktimarc.mikrotik.facade.raw.RawApi;
 import io.github.praktimarc.mikrotik.facade.wifi.AsyncWifiApi;
@@ -45,10 +48,12 @@ public final class MikrotikRtrApi implements AutoCloseable {
     private final ExecutorService ownedCallbackExecutor;
     private final CommandEngine commandEngine;
     private final CapabilityRegistry capabilityRegistry;
+    private final StreamRegistry streamRegistry;
     private final RawApi raw;
     private final DhcpServerApi dhcpServer;
     private final FirewallApi firewall;
     private final WifiApi wifi;
+    private final InterfacesApi interfaces;
     private final AsyncMikrotikRtrApi async;
 
     MikrotikRtrApi(ApiConnection connection, SessionLifecycle lifecycle, RouterOsEnvironment environment, Executor configuredCallbackExecutor) {
@@ -73,15 +78,18 @@ public final class MikrotikRtrApi implements AutoCloseable {
         }
         this.commandEngine=new CommandEngine(connection,commandTimeout,dispatchExecutor,callbackExecutor,timeoutScheduler);
         this.capabilityRegistry=new CapabilityRegistry();
+        this.streamRegistry=new StreamRegistry();
         this.raw=new RawApi(commandEngine,lifecycle);
         this.dhcpServer=new DhcpServerApi(commandEngine,lifecycle);
         this.firewall=new FirewallApi(commandEngine,lifecycle);
         this.wifi=new WifiApi(commandEngine,lifecycle,environment,capabilityRegistry);
+        this.interfaces=new InterfacesApi(connection,commandEngine,lifecycle,dispatchExecutor,callbackExecutor,streamRegistry);
         this.async=new AsyncMikrotikRtrApi(
                 new AsyncRawApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncDhcpServerApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncFirewallApi(commandEngine,lifecycle,callbackExecutor),
-                new AsyncWifiApi(commandEngine,lifecycle,callbackExecutor,environment,capabilityRegistry));
+                new AsyncWifiApi(commandEngine,lifecycle,callbackExecutor,environment,capabilityRegistry),
+                new AsyncInterfacesApi(commandEngine,lifecycle,callbackExecutor));
     }
 
     public static MikrotikRtrApiBuilder builder(){return new MikrotikRtrApiBuilder();}
@@ -93,11 +101,14 @@ public final class MikrotikRtrApi implements AutoCloseable {
      * @return typed WiFi API
      */
     public WifiApi wifi(){return wifi;}
+    /** Returns the typed interface/address API and traffic monitoring entry point. */
+    public InterfacesApi interfaces(){return interfaces;}
     public AsyncMikrotikRtrApi async(){return async;}
 
     @Override public void close() throws MikrotikConnectionException {
         if(!lifecycle.beginClose()) return;
         MikrotikConnectionException closeFailure=null;
+        streamRegistry.cancelActive();
         commandEngine.cancelActive();
         connection.removeConnectionListener(lifecycle);
         try{connection.close();}catch(ApiConnectionException exception){closeFailure=new MikrotikConnectionException("Unable to close RouterOS connection cleanly",exception);}finally{

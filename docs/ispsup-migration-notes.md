@@ -138,6 +138,16 @@ ISPSup must not migrate the old `empty/trap => other stack` behavior. It also mu
 
 Legacy `rx-signal` and modern `signal` are exposed as one normalized dBm value. Source-specific raw fields, pair-shaped `packets`/`bytes`, exact rate strings and future unknown fields remain available through `raw()`.
 
+### Task 14 interface/address primitives now available
+
+The facade now exposes `interfaces().list(...)`, `interfaces().addresses(...)`, mirrored finite async reads, and `interfaces().monitor(interfaceName)` for continuous traffic samples.
+
+For `getCMTSIp()`, ISPSup should query `interfaces().addresses(RouterOsProperties.builder().set("comment", "cmts-internal").build())`, then apply its existing site convention itself. The facade deliberately does not know that `cmts-internal` has a special meaning and does not subtract one from an IPv4 octet.
+
+Interface and monitor DTO migration should treat hardware-/driver-dependent counters as optional. Unknown RouterOS properties remain available through `raw()`; callers must not assume that every Ethernet, bridge, VLAN, tunnel, or virtual interface exposes the same counters.
+
+Long-running traffic monitoring is Flow-based. ISPSup must retain and cancel the returned `Flow.Subscription` when its consumer no longer needs updates. Closing the owning `MikrotikRtrApi` session also cancels active monitor subscriptions before the connection is closed.
+
 ## Final migration handoff requirements
 
 After facade stabilization, regenerate the migration handoff from finished facade code and then-current ISPSup source. Per old method include classification, new facade calls, imports, DTO mapping, exception and `Optional` changes, session ownership, compatibility implications, actual callers, tests, and debt to remove.

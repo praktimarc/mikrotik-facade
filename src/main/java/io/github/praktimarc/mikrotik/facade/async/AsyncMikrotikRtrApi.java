@@ -2,6 +2,7 @@ package io.github.praktimarc.mikrotik.facade.async;
 
 import io.github.praktimarc.mikrotik.facade.dhcp.AsyncDhcpServerApi;
 import io.github.praktimarc.mikrotik.facade.firewall.AsyncFirewallApi;
+import io.github.praktimarc.mikrotik.facade.interfaces.AsyncInterfacesApi;
 import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
 import io.github.praktimarc.mikrotik.facade.wifi.AsyncWifiApi;
 
@@ -16,6 +17,7 @@ public final class AsyncMikrotikRtrApi {
     private final AsyncDhcpServerApi dhcpServer;
     private final AsyncFirewallApi firewall;
     private final AsyncWifiApi wifi;
+    private final AsyncInterfacesApi interfaces;
 
     /**
      * Creates the asynchronous facade tree for session wiring.
@@ -24,16 +26,19 @@ public final class AsyncMikrotikRtrApi {
      * @param dhcpServer asynchronous DHCP server API
      * @param firewall asynchronous firewall API
      * @param wifi asynchronous WiFi/CAPsMAN API
+     * @param interfaces asynchronous interface/address API
      */
     public AsyncMikrotikRtrApi(
             AsyncRawApi raw,
             AsyncDhcpServerApi dhcpServer,
             AsyncFirewallApi firewall,
-            AsyncWifiApi wifi) {
+            AsyncWifiApi wifi,
+            AsyncInterfacesApi interfaces) {
         this.raw = Objects.requireNonNull(raw, "raw");
         this.dhcpServer = Objects.requireNonNull(dhcpServer, "dhcpServer");
         this.firewall = Objects.requireNonNull(firewall, "firewall");
         this.wifi = Objects.requireNonNull(wifi, "wifi");
+        this.interfaces = Objects.requireNonNull(interfaces, "interfaces");
     }
 
     /**
@@ -70,5 +75,10 @@ public final class AsyncMikrotikRtrApi {
      */
     public AsyncWifiApi wifi() {
         return wifi;
+    }
+
+    /** Returns the asynchronous typed interface/address API. */
+    public AsyncInterfacesApi interfaces() {
+        return interfaces;
     }
 }

@@ -181,6 +181,25 @@ Die Source-Resolution trennt weiterhin Capability, Source und Schema. Legacy CAP
 
 Der alte ISPSup-Handler filterte CAP-Interfaces über einen lexikalischen Range-Query und öffnete für jede Registration eine neue Session zur DHCP-Anreicherung. Beides bleibt Consumer-Komposition und wird nicht in die Facade übernommen.
 
+Task 14 finalisiert den Interface-/Monitoring-Slice:
+
+```java
+mtApi.interfaces().list();
+mtApi.interfaces().addresses();
+mtApi.interfaces().monitor("ether1");
+
+mtApi.async().interfaces().list();
+mtApi.async().interfaces().addresses();
+```
+
+`InterfaceInfo` modelliert generische `/interface/print`-Rows, `InterfaceAddress` modelliert `/ip/address/print`. Beide unterstützen Equality-Queries über `RouterOsProperties` und behalten unbekannte Felder vollständig in `raw()`. Hardware-/Treiber-Felder wie L2MTU, Max-L2MTU oder einzelne Statuswerte sind optional; nur fachlich zwingende Identifikationswerte werden erzwungen.
+
+`interfaces().monitor(interfaceName)` ist ein cold `Flow.Publisher<InterfaceMonitorEntry>` über `/interface/monitor-traffic`. Eine Subscription startet genau eine laufende RouterOS-Operation. Die Queue-Kapazität beträgt 64 Samples; Overflow verwendet unverändert `MikrotikBackpressureException` und best-effort Remote-Cancel. Monitor-Counter wie RX/TX Pakete, Bits, Fast-Path, Drops, Errors und Queue-Drops sind optional und werden nur bei tatsächlich vorhandenen numerischen Werten typisiert.
+
+Ein sessionweiter `StreamRegistry` registriert die von Interfaces-Monitoring exponierten Flow-Subscriptions. `MikrotikRtrApi.close()` ruft zuerst `streamRegistry.cancelActive()`, danach `commandEngine.cancelActive()`. Die Registry besitzt zusätzlich einen irreversiblen Closing-Marker: versucht ein verzögertes `onSubscribe` nach begonnenem Close noch eine Subscription zu registrieren, wird sie sofort gecancelt und startet keinen neuen RouterOS-Command.
+
+Die ISPSup-Regel `comment=cmts-internal` plus „letztes IPv4-Oktett minus eins“ bleibt Consumer-Policy. Die Facade liefert lediglich die generischen Address-Records.
+
 statt einer künstlichen Abbildung wie:
 
 ```java
