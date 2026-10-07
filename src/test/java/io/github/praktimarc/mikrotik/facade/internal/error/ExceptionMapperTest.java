@@ -97,6 +97,28 @@ class ExceptionMapperTest {
         assertTrue(mapped.routerOsMessage().orElseThrow().contains("<redacted>"));
     }
 
+
+    @Test
+    void commandExceptionRedactsReflectedUnknownRawValues() {
+        String opaque = "opaque-value-that-must-not-escape";
+        String address = "192.0.2.123";
+        MikrotikCommandException mapped = ExceptionMapper.mapCommand(
+                new TestCommandException(
+                        "failure for " + opaque + " at " + address,
+                        4),
+                "raw future operation",
+                "/future/service/set",
+                Map.of("future-auth-material", opaque),
+                Map.of("address", address));
+
+        String visible = mapped.routerOsMessage().orElseThrow();
+        assertFalse(visible.contains(opaque));
+        assertFalse(visible.contains(address));
+        assertTrue(visible.contains("<redacted>"));
+        assertFalse(mapped.toString().contains(opaque));
+        assertFalse(mapped.toString().contains(address));
+    }
+
     private static final class TestCommandException extends ApiCommandException {
         private TestCommandException(String message, Integer category) {
             super(message, "transport-tag", category);

@@ -1764,39 +1764,64 @@ The SFTP upload path remains `ACCEPTED_RAW_FALLBACK`: structured `raw().command(
 
 ## 43. Logging
 
-Die Facade verwendet:
+Die Facade verwendet ausschließlich:
 
 ```text
 SLF4J API
 ```
 
-ohne eigenes Logging-Backend zu erzwingen.
+und erzwingt kein Logging-Backend.
 
-Semantik:
+Jede reale `MikrotikRtrApi`-Session besitzt einen internen `FacadeDiagnostics`-Kontext mit lokaler `session-N`-ID. Jede finite Command-Operation erhält zusätzlich eine lokale `op-N`-ID. Diese IDs dienen ausschließlich zur Korrelation und ersetzen Host/IP, Benutzername und Low-Level-Tag in Logs.
+
+Verbindliche Level-Semantik:
 
 ```text
-ERROR – interner Fehler/Invarianzbruch
-WARN  – degradierter Betrieb/auffällige Compatibility-Situation
-INFO  – grober Session-Lifecycle
-DEBUG – Capability-/Source-/Adapterentscheidung
-TRACE – detaillierte sichere Diagnoseinformationen
+ERROR – unerwarteter interner Runtime-/Invarianzfehler
+WARN  – Timeout, unerwarteter Connection Loss, Datenfehler, tatsächlicher Compatibility-Fallback
+INFO  – grober Session-Lifecycle: ready / closing / closed
+DEBUG – Command Start/Terminalstatus, normale RouterOS-Rejection, Capability-/Source-Entscheidung
+TRACE – in v1 nicht für zusätzliche werttragende RouterOS-Daten genutzt
 ```
 
-Normale RouterOS-Commandfehler müssen nicht automatisch als Library-ERROR geloggt werden.
+Ein reguläres RouterOS-`!trap` bzw. `ApiCommandException` wird als typisierte `MikrotikCommandException` behandelt und höchstens DEBUG-diagnostiziert. Es ist kein Library-ERROR.
+
+Command-Diagnostik ist strukturell und wertfrei:
+
+```text
+session=session-7 operation=op-12
+path=/tool/fetch
+argumentKeys=[url, upload, src-path, user, password]
+flags=[]
+queryKeys=[]
+properties=[]
+```
+
+Werte aus Arguments, Queries oder Records werden nicht geloggt. RouterOS-Tags werden nicht geloggt.
+
+Auch bestehende Konfigurations-`toString()`-Methoden dürfen weder Credentials noch den konfigurierten Router-Host ausgeben.
 
 ## 44. Compatibility Diagnostics
 
-DEBUG-Diagnostik soll nachvollziehbar machen:
+DEBUG-Diagnostik enthält nur stabile, nicht sensitive Identifikatoren:
 
 ```text
-welches Environment erkannt wurde
-welche Quellen Kandidaten waren
-welche Source-Strategie gewählt wurde
-welcher Adapter verwendet wurde
-welche Fallback-Regel griff
+capability=<stable-id> state=<SUPPORTED|UNSUPPORTED|UNKNOWN> source=<cache|probe|recorded>
+feature=<stable-id> strategy=<...> selected=[<source-path>]
 ```
 
-Dabei werden weder Credentials noch komplette sensitive Routerkonfigurationen ausgegeben.
+Ein echter Fallback erzeugt zusätzlich eine actionable WARN:
+
+```text
+compatibility-fallback
+feature=<stable-id>
+unavailable=<source-path>
+selected=<source-path>
+```
+
+Ein lediglich deaktivierter, aber vorhandener Manager ist kein Fallback und erzeugt keine solche WARN. Dieselbe Kombination aus Feature, nicht verfügbarer Quelle und gewählter Quelle wird pro Session nur einmal als WARN ausgegeben.
+
+Für RouterOS-Fehlermeldungen gilt eine zusätzliche Security-Regel: Bevor freier RouterOS-Text in `MikrotikCommandException.routerOsMessage()` sichtbar wird, werden alle tatsächlich an das Command übergebenen Argument-/Query-Werte entfernt. Danach greift zusätzlich die zentrale heuristische Secret-Erkennung. Damit bleiben auch unbekannt benannte zukünftige Raw-Command-Secrets geschützt.
 
 ## 45. Teststrategie
 

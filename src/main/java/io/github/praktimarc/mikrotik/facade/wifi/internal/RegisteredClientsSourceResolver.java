@@ -13,6 +13,7 @@ import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
 import io.github.praktimarc.mikrotik.facade.internal.compat.DataSourcePlan;
 import io.github.praktimarc.mikrotik.facade.internal.compat.FeatureSourceResolver;
 import io.github.praktimarc.mikrotik.facade.internal.compat.ResolvedRecord;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import io.github.praktimarc.mikrotik.facade.wifi.WifiRegistration;
 
@@ -54,7 +55,8 @@ public final class RegisteredClientsSourceResolver {
     public RegisteredClientsSourceResolver(
             RouterOsEnvironment environment,
             CapabilityRegistry capabilities) {
-        this(environment, capabilities, new FeatureSourceResolver());
+        this(environment, capabilities, new FeatureSourceResolver(
+                Objects.requireNonNull(capabilities, "capabilities").diagnostics()));
     }
 
     RegisteredClientsSourceResolver(
@@ -102,6 +104,11 @@ public final class RegisteredClientsSourceResolver {
      */
     public CapabilityState capabilityState(SourceCandidate candidate) {
         return capabilities.state(requireCandidate(candidate).capability());
+    }
+
+    /** Returns the session diagnostic context shared with compatibility resolution. */
+    public FacadeDiagnostics diagnostics() {
+        return capabilities.diagnostics();
     }
 
     /**
@@ -245,7 +252,17 @@ public final class RegisteredClientsSourceResolver {
             return Optional.empty();
         }
         if (selected.size() == 1) {
-            return Optional.of(DataSourcePlan.single("wifi.registration", selected.get(0)));
+            String chosen = selected.get(0);
+            for (SourceCandidate candidate : candidates()) {
+                if (!candidate.source().equals(chosen)
+                        && capabilities.state(candidate.capability()) == CapabilityState.UNSUPPORTED) {
+                    diagnostics().compatibilityFallback(
+                            "wifi.registration",
+                            candidate.source(),
+                            chosen);
+                }
+            }
+            return Optional.of(DataSourcePlan.single("wifi.registration", chosen));
         }
         return Optional.of(DataSourcePlan.composite("wifi.registration", selected));
     }

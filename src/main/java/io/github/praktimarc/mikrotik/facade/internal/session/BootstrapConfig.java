@@ -137,7 +137,7 @@ public final class BootstrapConfig {
     @Override
     public String toString() {
         return "BootstrapConfig{" +
-                "host=" + host +
+                "host=<configured>" +
                 ", credentials=<configured>" +
                 ", port=" + port +
                 ", connectTimeoutMillis=" + connectTimeoutMillis +

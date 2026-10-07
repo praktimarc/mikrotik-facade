@@ -78,7 +78,11 @@ For Task 13 manager/path discovery, RouterOS command category `0` on the exact r
 
 ## Diagnostics
 
-Compatibility diagnostics expose only stable feature names, strategy names, and source identifiers. They do not include command arguments, queries, RouterOS record values, credentials, or secret-bearing free-form rationale.
+Compatibility diagnostics expose only stable feature names, strategy names, capability states and source identifiers. They do not include command argument/query values, RouterOS record values, credentials, host/IP values, low-level tags, or secret-bearing free-form rationale.
+
+Source selection is DEBUG. An actual preferred/unsupported-source fallback is WARN and includes both `unavailable=<source>` and `selected=<source>` so the warning is actionable. A configured-but-disabled source does not count as a fallback. Identical fallback tuples are warned once per facade session.
+
+Finite command diagnostics use local `session-N` / `op-N` correlation and structural command metadata only. RouterOS command failures do not expose free-form reflected command values without sanitization.
 
 ## Maintenance rule
 

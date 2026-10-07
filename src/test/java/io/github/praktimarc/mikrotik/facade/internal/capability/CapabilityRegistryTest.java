@@ -2,8 +2,11 @@ package io.github.praktimarc.mikrotik.facade.internal.capability;
 
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -114,6 +117,38 @@ class CapabilityRegistryTest {
         assertThrows(IllegalStateException.class, () -> registry.recordDefinitive(
                 "wifi.path", CapabilityState.UNSUPPORTED));
         assertEquals(CapabilityState.SUPPORTED, registry.state("wifi.path"));
+    }
+
+
+    @Test
+    void capabilityProbeAndCacheDecisionsEmitDebugWithoutCommandValues() throws Exception {
+        List<String> logs = new ArrayList<>();
+        FacadeDiagnostics diagnostics = new FacadeDiagnostics(
+                "session-test",
+                (level, message) -> logs.add(level + ":" + message));
+        CapabilityRegistry registry = new CapabilityRegistry(diagnostics);
+        RouterOsCommand probe = RouterOsCommand.builder("/interface/wifi/print")
+                .query("opaque", "DO-NOT-LOG")
+                .build();
+
+        assertEquals(CapabilityState.SUPPORTED, registry.resolve(
+                "wifi.path",
+                probe,
+                command -> CapabilityState.SUPPORTED));
+        assertEquals(CapabilityState.SUPPORTED, registry.resolve(
+                "wifi.path",
+                probe,
+                command -> CapabilityState.UNSUPPORTED));
+
+        assertTrue(logs.stream().anyMatch(line ->
+                line.startsWith("DEBUG:")
+                        && line.contains("capability=wifi.path")
+                        && line.contains("state=SUPPORTED")
+                        && line.contains("source=probe")));
+        assertTrue(logs.stream().anyMatch(line ->
+                line.startsWith("DEBUG:")
+                        && line.contains("source=cache")));
+        assertFalse(logs.toString().contains("DO-NOT-LOG"));
     }
 
 }

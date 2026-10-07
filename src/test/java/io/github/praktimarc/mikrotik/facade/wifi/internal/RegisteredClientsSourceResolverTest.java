@@ -9,8 +9,10 @@ import io.github.praktimarc.mikrotik.facade.internal.capability.CapabilityRegist
 import io.github.praktimarc.mikrotik.facade.internal.capability.CapabilityState;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 import io.github.praktimarc.mikrotik.facade.internal.compat.DataSourceStrategy;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -163,4 +165,30 @@ class RegisteredClientsSourceResolverTest {
                 .map(name -> new RouterOsPackage(name, version, RouterOsRecord.of(Map.of("name", name))))
                 .toList());
     }
+
+    @Test
+    void unsupportedAlternativeProducesActionableCompatibilityWarning() {
+        List<String> logs = new ArrayList<>();
+        FacadeDiagnostics diagnostics = new FacadeDiagnostics(
+                "session-test",
+                (level, message) -> logs.add(level + ":" + message));
+        CapabilityRegistry capabilities = new CapabilityRegistry(diagnostics);
+        RegisteredClientsSourceResolver resolver = new RegisteredClientsSourceResolver(
+                environment("7.20.4", List.of("wireless")),
+                capabilities);
+
+        var legacy = resolver.candidates().stream()
+                .filter(candidate -> candidate.source().equals(RegisteredClientsSourceResolver.LEGACY_SOURCE))
+                .findFirst()
+                .orElseThrow();
+        resolver.recordUnsupported(legacy);
+        resolver.plan(Map.of(RegisteredClientsSourceResolver.MODERN_SOURCE, true)).orElseThrow();
+
+        assertTrue(logs.stream().anyMatch(line ->
+                line.startsWith("WARN:")
+                        && line.contains("feature=wifi.registration")
+                        && line.contains("unavailable=/caps-man/registration-table")
+                        && line.contains("selected=/interface/wifi/registration-table")));
+    }
+
 }

@@ -3,6 +3,7 @@ package io.github.praktimarc.mikrotik.facade.internal.command;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikCommandException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikTimeoutException;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import me.legrange.mikrotik.ApiCommandException;
 import me.legrange.mikrotik.ApiConnection;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -343,6 +345,68 @@ class CommandEngineTest {
         }
     }
 
+
+
+    @Test
+    void diagnosticsClassifyRouterOsTrapAsDebugWithoutExposingValues() throws Exception {
+        FakeConnection connection = new FakeConnection();
+        ExecutorService dispatch = Executors.newSingleThreadExecutor(named("dispatch"));
+        try {
+            List<String> logs = java.util.Collections.synchronizedList(new ArrayList<>());
+            FacadeDiagnostics diagnostics = new FacadeDiagnostics(
+                    "session-test",
+                    (level, message) -> logs.add(level + ":" + message));
+            CommandEngine engine = new CommandEngine(
+                    connection,
+                    Duration.ofSeconds(10),
+                    dispatch,
+                    Runnable::run,
+                    new ManualScheduler(),
+                    diagnostics);
+            RouterOsOperation<String> operation = new RouterOsOperation<>() {
+                @Override
+                public String name() {
+                    return "raw secure operation";
+                }
+
+                @Override
+                public RouterOsCommand command() {
+                    return RouterOsCommand.builder("/future/service/set")
+                            .argument("opaque-secret-field", "UNCLASSIFIED-SECRET")
+                            .query("address", "192.0.2.77")
+                            .build();
+                }
+
+                @Override
+                public String map(CommandResult result) {
+                    return "unused";
+                }
+            };
+
+            CompletableFuture<String> future = engine.executeAsync(operation);
+            connection.awaitExecute();
+            connection.listener.error(
+                    new TestCommandException(
+                            "rejected UNCLASSIFIED-SECRET for 192.0.2.77",
+                            4));
+
+            ExecutionException failure = assertThrows(
+                    ExecutionException.class,
+                    () -> future.get(2, TimeUnit.SECONDS));
+            assertInstanceOf(MikrotikCommandException.class, failure.getCause());
+
+            String all = logs.toString();
+            assertTrue(all.contains("session=session-test"));
+            assertTrue(all.contains("operation=op-1"));
+            assertTrue(all.contains("event=routeros-rejected"));
+            assertTrue(all.contains("category=4"));
+            assertFalse(all.contains("UNCLASSIFIED-SECRET"));
+            assertFalse(all.contains("192.0.2.77"));
+            assertFalse(logs.stream().anyMatch(line -> line.startsWith("ERROR:")));
+        } finally {
+            dispatch.shutdownNow();
+        }
+    }
     @Test
     void engineContainsNoFacadeSendLockOrTagAllocator() {
         for (var field : CommandEngine.class.getDeclaredFields()) {

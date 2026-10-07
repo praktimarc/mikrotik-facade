@@ -1,6 +1,7 @@
 package io.github.praktimarc.mikrotik.facade.internal.compat;
 
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,8 +11,16 @@ import java.util.Objects;
 /** Generic executor for already-decided compatibility source plans. */
 public final class FeatureSourceResolver {
 
-    /** Creates a stateless generic source resolver. */
+    private final FacadeDiagnostics diagnostics;
+
+    /** Creates a stateless generic source resolver without emitted diagnostics. */
     public FeatureSourceResolver() {
+        this(FacadeDiagnostics.noOp("standalone-session"));
+    }
+
+    /** Creates a source resolver sharing one session diagnostic context. */
+    public FeatureSourceResolver(FacadeDiagnostics diagnostics) {
+        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }
 
     /**
@@ -31,6 +40,15 @@ public final class FeatureSourceResolver {
         Objects.requireNonNull(successfulResults, "successfulResults");
 
         List<String> selected = selectedSources(plan, successfulResults);
+        diagnostics.sourceSelection(plan, selected);
+        if (plan.strategy() == DataSourceStrategy.PREFERRED_FALLBACK
+                && selected.size() == 1
+                && selected.get(0).equals(plan.sources().get(1))) {
+            diagnostics.compatibilityFallback(
+                    plan.feature(),
+                    plan.sources().get(0),
+                    plan.sources().get(1));
+        }
         List<ResolvedRecord> resolved = new ArrayList<>();
         for (String source : selected) {
             List<RouterOsRecord> records = Objects.requireNonNull(

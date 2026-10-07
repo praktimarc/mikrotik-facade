@@ -4,6 +4,7 @@ import io.github.praktimarc.mikrotik.facade.exception.MikrotikCommandException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikTimeoutException;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import io.github.praktimarc.mikrotik.facade.internal.error.ExceptionMapper;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import me.legrange.mikrotik.ApiConnection;
@@ -32,6 +33,7 @@ public final class CommandEngine {
     private final Executor dispatchExecutor;
     private final Executor callbackExecutor;
     private final TimeoutScheduler timeoutScheduler;
+    private final FacadeDiagnostics diagnostics;
     private final Set<OperationContext> activeOperations = ConcurrentHashMap.newKeySet();
 
     /** Creates an engine backed by a scheduled executor for timeout tasks. */
@@ -46,13 +48,31 @@ public final class CommandEngine {
                 commandTimeout,
                 dispatchExecutor,
                 callbackExecutor,
+                timeoutScheduler,
+                FacadeDiagnostics.noOp("standalone-session"));
+    }
+
+    /** Creates an engine with explicit session-scoped diagnostics. */
+    public CommandEngine(
+            ApiConnection connection,
+            Duration commandTimeout,
+            Executor dispatchExecutor,
+            Executor callbackExecutor,
+            ScheduledExecutorService timeoutScheduler,
+            FacadeDiagnostics diagnostics) {
+        this(
+                connection,
+                commandTimeout,
+                dispatchExecutor,
+                callbackExecutor,
                 (task, delay) -> {
                     var scheduled = timeoutScheduler.schedule(
                             task,
                             delay.toMillis(),
                             TimeUnit.MILLISECONDS);
                     return () -> scheduled.cancel(false);
-                });
+                },
+                diagnostics);
     }
 
     CommandEngine(
@@ -61,11 +81,28 @@ public final class CommandEngine {
             Executor dispatchExecutor,
             Executor callbackExecutor,
             TimeoutScheduler timeoutScheduler) {
+        this(
+                connection,
+                commandTimeout,
+                dispatchExecutor,
+                callbackExecutor,
+                timeoutScheduler,
+                FacadeDiagnostics.noOp("standalone-session"));
+    }
+
+    CommandEngine(
+            ApiConnection connection,
+            Duration commandTimeout,
+            Executor dispatchExecutor,
+            Executor callbackExecutor,
+            TimeoutScheduler timeoutScheduler,
+            FacadeDiagnostics diagnostics) {
         this.connection = Objects.requireNonNull(connection, "connection");
         this.commandTimeout = requirePositiveMillis(commandTimeout);
         this.dispatchExecutor = Objects.requireNonNull(dispatchExecutor, "dispatchExecutor");
         this.callbackExecutor = Objects.requireNonNull(callbackExecutor, "callbackExecutor");
         this.timeoutScheduler = Objects.requireNonNull(timeoutScheduler, "timeoutScheduler");
+        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }
 
     /**
@@ -77,7 +114,16 @@ public final class CommandEngine {
         Execution execution = start(operation);
         try {
             CommandResult result = execution.context.resultFuture().get();
-            return operation.map(result);
+            try {
+                return operation.map(result);
+            } catch (RuntimeException mappingFailure) {
+                diagnostics.internalError(
+                        execution.operationId,
+                        operation.name(),
+                        operation.command(),
+                        mappingFailure);
+                throw mappingFailure;
+            }
         } catch (InterruptedException interrupted) {
             execution.context.cancel();
             Thread.currentThread().interrupt();
@@ -133,6 +179,11 @@ public final class CommandEngine {
                         () -> publicFuture.completeExceptionally(mappingFailure));
                 return;
             } catch (RuntimeException mappingFailure) {
+                diagnostics.internalError(
+                        execution.operationId,
+                        operation.name(),
+                        operation.command(),
+                        mappingFailure);
                 MikrotikFacadeException wrapped = new MikrotikFacadeException(
                         "Facade operation result mapping failed",
                         mappingFailure);
@@ -156,11 +207,13 @@ public final class CommandEngine {
                 operation.name(),
                 "operation.name()");
 
+        String operationId = diagnostics.nextOperationId();
         OperationContext context = new OperationContext(
                 connection,
                 operationName,
                 command);
         activeOperations.add(context);
+        diagnostics.commandStarted(operationId, operationName, command);
 
         TimeoutTask timeoutTask = timeoutScheduler.schedule(
                 () -> context.timeout(new MikrotikTimeoutException(
@@ -175,13 +228,18 @@ public final class CommandEngine {
         context.resultFuture().whenComplete((ignored, failure) -> {
             timeoutTask.cancel();
             activeOperations.remove(context);
+            diagnostics.commandTerminal(
+                    operationId,
+                    operationName,
+                    command,
+                    failure);
         });
 
-        dispatchExecutor.execute(() -> dispatch(context));
-        return new Execution(context);
+        dispatchExecutor.execute(() -> dispatch(context, operationId));
+        return new Execution(context, operationId);
     }
 
-    private void dispatch(OperationContext context) {
+    private void dispatch(OperationContext context, String operationId) {
         if (!context.beginDispatch()) {
             return;
         }
@@ -209,6 +267,11 @@ public final class CommandEngine {
                             command.arguments(),
                             command.queries()));
                 } catch (RuntimeException mappingFailure) {
+                    diagnostics.internalError(
+                            operationId,
+                            context.operation(),
+                            command,
+                            mappingFailure);
                     context.fail(new MikrotikFacadeException(
                             "RouterOS command failure could not be mapped safely",
                             mappingFailure));
@@ -244,6 +307,11 @@ public final class CommandEngine {
                     command.queries()));
             context.dispatchFinishedWithoutTag();
         } catch (RuntimeException unexpectedFailure) {
+            diagnostics.internalError(
+                    operationId,
+                    context.operation(),
+                    command,
+                    unexpectedFailure);
             context.fail(new MikrotikFacadeException(
                     "RouterOS command dispatch failed unexpectedly",
                     unexpectedFailure));
@@ -303,9 +371,11 @@ public final class CommandEngine {
 
     private static final class Execution {
         private final OperationContext context;
+        private final String operationId;
 
-        private Execution(OperationContext context) {
+        private Execution(OperationContext context, String operationId) {
             this.context = context;
+            this.operationId = operationId;
         }
     }
 

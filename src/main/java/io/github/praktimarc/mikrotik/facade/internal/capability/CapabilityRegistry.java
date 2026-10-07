@@ -2,6 +2,7 @@ package io.github.praktimarc.mikrotik.facade.internal.capability;
 
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -21,9 +22,21 @@ public final class CapabilityRegistry {
 
     private final ConcurrentMap<String, CapabilityState> definitive = new ConcurrentHashMap<>();
     private final Object probeLock = new Object();
+    private final FacadeDiagnostics diagnostics;
 
-    /** Creates an empty session-scoped capability registry. */
+    /** Creates an empty session-scoped capability registry without emitted diagnostics. */
     public CapabilityRegistry() {
+        this(FacadeDiagnostics.noOp("standalone-session"));
+    }
+
+    /** Creates a session-scoped capability registry with explicit diagnostics. */
+    public CapabilityRegistry(FacadeDiagnostics diagnostics) {
+        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
+    }
+
+    /** Returns the shared internal diagnostic context for source resolvers. */
+    public FacadeDiagnostics diagnostics() {
+        return diagnostics;
     }
 
     /**
@@ -53,6 +66,10 @@ public final class CapabilityRegistry {
             throw new IllegalStateException(
                     "conflicting definitive capability state for " + key);
         }
+        diagnostics.capabilityDecision(
+                key,
+                (existing == null ? checked : existing).name(),
+                existing == null ? "recorded" : "cached");
     }
 
     /**
@@ -79,12 +96,14 @@ public final class CapabilityRegistry {
 
         CapabilityState cached = definitive.get(key);
         if (cached != null) {
+            diagnostics.capabilityDecision(key, cached.name(), "cache");
             return cached;
         }
 
         synchronized (probeLock) {
             cached = definitive.get(key);
             if (cached != null) {
+                diagnostics.capabilityDecision(key, cached.name(), "cache");
                 return cached;
             }
             CapabilityState resolved = Objects.requireNonNull(
@@ -93,6 +112,7 @@ public final class CapabilityRegistry {
             if (resolved.isDefinitive()) {
                 definitive.put(key, resolved);
             }
+            diagnostics.capabilityDecision(key, resolved.name(), "probe");
             return resolved;
         }
     }

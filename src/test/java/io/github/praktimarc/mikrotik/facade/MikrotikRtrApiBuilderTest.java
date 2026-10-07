@@ -147,6 +147,10 @@ class MikrotikRtrApiBuilderTest {
 
         assertFalse(builderText.contains(password));
         assertFalse(configText.contains(password));
+        assertFalse(builderText.contains("router.example"));
+        assertFalse(configText.contains("router.example"));
+        assertTrue(builderText.contains("host=<configured>"));
+        assertTrue(configText.contains("host=<configured>"));
         assertTrue(builderText.contains("credentials=<configured>"));
         assertTrue(configText.contains("credentials=<configured>"));
         assertTrue(builderText.contains("TLS_UNVERIFIED"));

@@ -25,11 +25,28 @@ public final class CommandDiagnosticRenderer {
             Map<String, String> arguments,
             Map<String, String> queries) {
         String path = safeCommandPath(commandPath);
-        Map<String, String> safeArguments = redactForPath(path, nonNullMap(arguments));
-        Map<String, String> safeQueries = redactForPath(path, nonNullMap(queries));
+        Map<String, String> safeArguments = nonNullMap(arguments);
+        Map<String, String> safeQueries = nonNullMap(queries);
         return "RouterOsCommand{path=" + path
-                + ", arguments=" + safeArguments
-                + ", queries=" + safeQueries
+                + ", argumentKeys=" + safeArguments.keySet()
+                + ", queryKeys=" + safeQueries.keySet()
+                + '}';
+    }
+
+    /**
+     * Renders one immutable command without including any argument, query or record values.
+     *
+     * @param command command snapshot
+     * @return structural secret-safe diagnostic
+     */
+    public static String structural(
+            io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand command) {
+        Objects.requireNonNull(command, "command");
+        return "command={path=" + command.path()
+                + ", argumentKeys=" + command.arguments().keySet()
+                + ", flags=" + command.flags()
+                + ", queryKeys=" + command.queries().keySet()
+                + ", properties=" + command.properties()
                 + '}';
     }
 
@@ -93,22 +110,13 @@ public final class CommandDiagnosticRenderer {
             Map<String, String> queries) {
         Map<String, String> rawArguments = nonNullMap(arguments);
         Map<String, String> rawQueries = nonNullMap(queries);
-        String safe = message;
+        String safe = redactAllProvidedValues(message, rawArguments);
+        safe = redactAllProvidedValues(safe, rawQueries);
         if (isSnmpCommunityPath(safeCommandPath(commandPath))) {
             safe = redactNamedValue(safe, rawArguments.get("name"));
             safe = redactNamedValue(safe, rawQueries.get("name"));
         }
         return SecretRedactor.redactText(safe, rawArguments, rawQueries);
-    }
-
-    private static Map<String, String> redactForPath(String path, Map<String, String> values) {
-        Map<String, String> safe = SecretRedactor.redactMap(values);
-        if (!isSnmpCommunityPath(path) || !safe.containsKey("name")) {
-            return safe;
-        }
-        LinkedHashMap<String, String> copy = new LinkedHashMap<>(safe);
-        copy.put("name", SecretRedactor.REDACTED);
-        return java.util.Collections.unmodifiableMap(copy);
     }
 
     private static boolean isSnmpCommunityPath(String path) {
@@ -120,6 +128,19 @@ public final class CommandDiagnosticRenderer {
             return text;
         }
         return text.replace(value, SecretRedactor.REDACTED);
+    }
+
+    private static String redactAllProvidedValues(String text, Map<String, String> values) {
+        if (text == null) {
+            return null;
+        }
+        String safe = text;
+        for (String value : values.values()) {
+            if (value != null && !value.isEmpty()) {
+                safe = safe.replace(value, SecretRedactor.REDACTED);
+            }
+        }
+        return safe;
     }
 
     private static Map<String, String> nonNullMap(Map<String, String> values) {

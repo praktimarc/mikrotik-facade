@@ -37,7 +37,8 @@ public final class RemoteCapsSourceResolver {
 
     /** Creates a resolver reusing the registration module's manager capability knowledge. */
     public RemoteCapsSourceResolver(RegisteredClientsSourceResolver managers) {
-        this(managers, new FeatureSourceResolver());
+        this(managers, new FeatureSourceResolver(
+                Objects.requireNonNull(managers, "managers").diagnostics()));
     }
 
     RemoteCapsSourceResolver(
@@ -100,7 +101,17 @@ public final class RemoteCapsSourceResolver {
         if (Boolean.TRUE.equals(sourceRelevant.get(MODERN_SOURCE))) selected.add(MODERN_SOURCE);
         if (selected.isEmpty()) return Optional.empty();
         if (selected.size() == 1) {
-            return Optional.of(DataSourcePlan.single("wifi.remote-caps", selected.get(0)));
+            String chosen = selected.get(0);
+            for (SourceCandidate candidate : candidates()) {
+                if (!candidate.source().equals(chosen)
+                        && capabilityState(candidate) == CapabilityState.UNSUPPORTED) {
+                    managers.diagnostics().compatibilityFallback(
+                            "wifi.remote-caps",
+                            candidate.source(),
+                            chosen);
+                }
+            }
+            return Optional.of(DataSourcePlan.single("wifi.remote-caps", chosen));
         }
         return Optional.of(DataSourcePlan.composite("wifi.remote-caps", selected));
     }

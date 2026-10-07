@@ -2,6 +2,7 @@ package io.github.praktimarc.mikrotik.facade;
 
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsSystemInfo;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionState;
 import me.legrange.mikrotik.ApiConnection;
@@ -12,12 +13,15 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MikrotikRtrApiLifecycleTest {
 
@@ -51,6 +55,34 @@ class MikrotikRtrApiLifecycleTest {
         assertEquals(SessionState.CLOSED, lifecycle.state());
     }
 
+
+
+    @Test
+    void facadeLifecycleEmitsReadyClosingAndClosedInfoWithLocalSessionId() throws Exception {
+        List<String> info = new ArrayList<>();
+        FacadeDiagnostics diagnostics = new FacadeDiagnostics(
+                "session-lifecycle",
+                (level, message) -> {
+                    if (level == FacadeDiagnostics.Level.INFO) {
+                        info.add(message);
+                    }
+                });
+        SessionLifecycle lifecycle = new SessionLifecycle();
+        MikrotikRtrApi api = new MikrotikRtrApi(
+                new FakeConnection(),
+                lifecycle,
+                environment(),
+                Runnable::run,
+                Duration.ofSeconds(60),
+                diagnostics);
+
+        api.close();
+
+        assertEquals(3, info.size());
+        assertTrue(info.get(0).contains("session=session-lifecycle state=ready"));
+        assertTrue(info.get(1).contains("session=session-lifecycle state=closing"));
+        assertTrue(info.get(2).contains("session=session-lifecycle state=closed"));
+    }
     private static RouterOsEnvironment environment() {
         return RouterOsEnvironment.withPackages(
                 new RouterOsSystemInfo(

@@ -171,7 +171,7 @@ public final class MikrotikRtrApiBuilder {
     @Override
     public String toString() {
         return "MikrotikRtrApiBuilder{" +
-                "host=" + (host == null ? "<unset>" : host) +
+                "host=" + (host == null ? "<unset>" : "<configured>") +
                 ", credentials=" + (username == null ? "<unset>" : "<configured>") +
                 ", transport=" + transport +
                 ", port=" + (portOverride == null ? "<default>" : portOverride) +
@@ -322,7 +322,7 @@ public final class MikrotikRtrApiBuilder {
         @Override
         public String toString() {
             return "ValidatedConfig{" +
-                    "host=" + host +
+                    "host=<configured>" +
                     ", credentials=<configured>" +
                     ", transport=" + transport +
                     ", port=" + port +

@@ -1,8 +1,10 @@
 package io.github.praktimarc.mikrotik.facade.internal.compat;
 
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -112,6 +114,33 @@ class FeatureSourceResolverTest {
         assertEquals(1, resolved.size());
         assertEquals("fallback", resolved.get(0).record().require("id"));
         assertEquals("/caps-man/registration-table", resolved.get(0).source());
+    }
+
+
+    @Test
+    void preferredFallbackEmitsDebugSelectionAndActionableWarn() {
+        List<String> logs = new ArrayList<>();
+        FacadeDiagnostics diagnostics = new FacadeDiagnostics(
+                "session-test",
+                (level, message) -> logs.add(level + ":" + message));
+        FeatureSourceResolver loggingResolver = new FeatureSourceResolver(diagnostics);
+        DataSourcePlan plan = DataSourcePlan.preferredFallback(
+                "wifi.registration",
+                "/interface/wifi/registration-table",
+                "/caps-man/registration-table");
+
+        loggingResolver.resolve(plan, Map.of(
+                "/caps-man/registration-table", List.of(record("id", "fallback"))));
+
+        assertTrue(logs.stream().anyMatch(line ->
+                line.startsWith("DEBUG:")
+                        && line.contains("feature=wifi.registration")
+                        && line.contains("selected=[/caps-man/registration-table]")));
+        assertTrue(logs.stream().anyMatch(line ->
+                line.startsWith("WARN:")
+                        && line.contains("compatibility-fallback")
+                        && line.contains("unavailable=/interface/wifi/registration-table")
+                        && line.contains("selected=/caps-man/registration-table")));
     }
 
 }

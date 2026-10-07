@@ -98,10 +98,7 @@ public final class RouterOsCommand {
 
     @Override
     public String toString() {
-        String rendered = CommandDiagnosticRenderer.render(path, arguments, queries);
-        return rendered.substring(0, rendered.length() - 1)
-                + ", flags=" + flags
-                + ", properties=" + properties + '}';
+        return CommandDiagnosticRenderer.structural(this);
     }
 
     private static String validatePath(String path) {

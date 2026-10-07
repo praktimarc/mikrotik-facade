@@ -1,6 +1,7 @@
 package io.github.praktimarc.mikrotik.facade.internal.session;
 
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import me.legrange.mikrotik.ApiConnectionException;
 import me.legrange.mikrotik.ConnectionListener;
 
@@ -15,6 +16,7 @@ public final class SessionLifecycle implements ConnectionListener {
 
     private final AtomicReference<SessionState> state = new AtomicReference<>(SessionState.OPEN);
     private final AtomicReference<ApiConnectionException> failure = new AtomicReference<>();
+    private volatile FacadeDiagnostics diagnostics = FacadeDiagnostics.noOp("unbound-session");
 
     /**
      * Creates a lifecycle in the open state. The instance exists internally during bootstrap,
@@ -41,11 +43,21 @@ public final class SessionLifecycle implements ConnectionListener {
         return Optional.ofNullable(failure.get());
     }
 
+    /**
+     * Attaches the session-scoped diagnostic context after the facade session id exists.
+     *
+     * @param diagnostics secret-safe session diagnostics
+     */
+    public void attachDiagnostics(FacadeDiagnostics diagnostics) {
+        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
+    }
+
     @Override
     public void connectionLost(ApiConnectionException cause) {
         Objects.requireNonNull(cause, "cause");
         if (state.compareAndSet(SessionState.OPEN, SessionState.BROKEN)) {
             failure.compareAndSet(null, cause);
+            diagnostics.connectionLost(cause);
         }
     }
 

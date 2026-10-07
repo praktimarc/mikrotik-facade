@@ -50,6 +50,8 @@ class RouterOsCommandTest {
         assertThrows(
                 UnsupportedOperationException.class,
                 () -> command.arguments().put("x", "y"));
+        assertTrue(command.toString().contains("argumentKeys=[name, password]"));
+        assertFalse(command.toString().contains("alice"));
         assertFalse(command.toString().contains("super-secret"));
     }
 }

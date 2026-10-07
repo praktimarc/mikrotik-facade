@@ -874,20 +874,43 @@ The current connected `praktimarc/ISPSup` repository still contains only a READM
 
 Test the finished system as a whole:
 
-- [ ] SLF4J API only; no forced backend.
-- [ ] lifecycle INFO diagnostics.
-- [ ] capability/source DEBUG diagnostics.
-- [ ] no ordinary RouterOS `!trap` automatically treated as an internal ERROR.
-- [ ] sensitive values absent from all tested log levels.
-- [ ] arbitrary raw command secrets redacted.
-- [ ] Connection/state identifiers useful for diagnostics without exposing credentials.
-- [ ] compatibility fallback warnings are actionable.
+- [x] SLF4J API only; no forced backend.
+- [x] lifecycle INFO diagnostics.
+- [x] capability/source DEBUG diagnostics.
+- [x] no ordinary RouterOS `!trap` automatically treated as an internal ERROR.
+- [x] sensitive values absent from all tested log levels.
+- [x] arbitrary raw command secrets redacted.
+- [x] Connection/state identifiers useful for diagnostics without exposing credentials.
+- [x] compatibility fallback warnings are actionable.
 
 Run full test suite:
 
 ```text
 mvn clean verify
 ```
+
+
+Task-18 implementation notes:
+
+- One internal `FacadeDiagnostics` context is bound to each real facade session.
+- Correlation uses local identifiers only: `session-N` and `op-N`. Host/IP, username, credentials and low-level RouterOS tags are not logged.
+- INFO is limited to coarse session lifecycle (`ready`, `closing`, `closed`).
+- DEBUG covers finite-command start/completion/cancellation, ordinary RouterOS command rejection, capability decisions and source selection.
+- WARN covers timeout, unexpected connection loss, malformed/data failures and actual compatibility fallback.
+- ERROR is reserved for unexpected internal runtime/invariant failures. Ordinary RouterOS `!trap` never maps to ERROR automatically.
+- Command diagnostics are structural only: path plus argument/query key names, flags and requested property names. No command value is rendered.
+- RouterOS command-error sanitization removes every actual argument/query value reflected in the RouterOS message before the normal secret-key heuristics run. This protects arbitrary future raw-command secrets as well as known credential names.
+- Builder/bootstrap `toString()` output no longer exposes the configured RouterOS host.
+- SLF4J remains API-only. Tests use an internal sink abstraction and do not introduce a logging backend.
+
+Verification status in the current execution environment:
+
+```text
+javac --release 17 / focused runtime checks: available
+mvn clean verify: NOT RUN — Maven is not installed in this environment
+```
+
+The Maven gate remains mandatory before claiming a release-ready v1 build; it is intentionally not recorded as executed here.
 
 ---
 

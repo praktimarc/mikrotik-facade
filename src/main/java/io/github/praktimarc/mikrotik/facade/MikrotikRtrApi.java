@@ -14,6 +14,7 @@ import io.github.praktimarc.mikrotik.facade.interfaces.AsyncInterfacesApi;
 import io.github.praktimarc.mikrotik.facade.interfaces.InterfacesApi;
 import io.github.praktimarc.mikrotik.facade.internal.capability.CapabilityRegistry;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
+import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.internal.stream.StreamRegistry;
 import io.github.praktimarc.mikrotik.facade.queue.AsyncQueueApi;
@@ -56,6 +57,7 @@ public final class MikrotikRtrApi implements AutoCloseable {
     private final Executor callbackExecutor;
     private final ExecutorService ownedCallbackExecutor;
     private final CommandEngine commandEngine;
+    private final FacadeDiagnostics diagnostics;
     private final CapabilityRegistry capabilityRegistry;
     private final StreamRegistry streamRegistry;
     private final FileDownloadExecutor fileDownloadExecutor;
@@ -75,12 +77,26 @@ public final class MikrotikRtrApi implements AutoCloseable {
     }
 
     MikrotikRtrApi(ApiConnection connection, SessionLifecycle lifecycle, RouterOsEnvironment environment, Executor configuredCallbackExecutor, Duration commandTimeout) {
+        this(connection,lifecycle,environment,configuredCallbackExecutor,commandTimeout,null);
+    }
+
+    MikrotikRtrApi(
+            ApiConnection connection,
+            SessionLifecycle lifecycle,
+            RouterOsEnvironment environment,
+            Executor configuredCallbackExecutor,
+            Duration commandTimeout,
+            FacadeDiagnostics diagnosticsOverride) {
         this.connection=Objects.requireNonNull(connection,"connection");
         this.lifecycle=Objects.requireNonNull(lifecycle,"lifecycle");
         this.environment=Objects.requireNonNull(environment,"environment");
         this.configuredCallbackExecutor=configuredCallbackExecutor;
         Objects.requireNonNull(commandTimeout,"commandTimeout");
         int session=SESSION_SEQUENCE.incrementAndGet();
+        this.diagnostics=diagnosticsOverride==null
+                ? FacadeDiagnostics.slf4j("session-"+session)
+                : diagnosticsOverride;
+        this.lifecycle.attachDiagnostics(diagnostics);
         this.dispatchExecutor=Executors.newSingleThreadExecutor(daemonThreadFactory("mikrotik-facade-dispatch-"+session));
         this.timeoutScheduler=Executors.newSingleThreadScheduledExecutor(daemonThreadFactory("mikrotik-facade-timeout-"+session));
         if(configuredCallbackExecutor==null){
@@ -90,9 +106,9 @@ public final class MikrotikRtrApi implements AutoCloseable {
             this.ownedCallbackExecutor=null;
             this.callbackExecutor=configuredCallbackExecutor;
         }
-        this.commandEngine=new CommandEngine(connection,commandTimeout,dispatchExecutor,callbackExecutor,timeoutScheduler);
+        this.commandEngine=new CommandEngine(connection,commandTimeout,dispatchExecutor,callbackExecutor,timeoutScheduler,diagnostics);
         this.fileDownloadExecutor=new FileDownloadExecutor(callbackExecutor,daemonThreadFactory("mikrotik-facade-download-"+session));
-        this.capabilityRegistry=new CapabilityRegistry();
+        this.capabilityRegistry=new CapabilityRegistry(diagnostics);
         this.streamRegistry=new StreamRegistry();
         this.raw=new RawApi(commandEngine,lifecycle);
         this.dhcpServer=new DhcpServerApi(commandEngine,lifecycle);
@@ -113,6 +129,7 @@ public final class MikrotikRtrApi implements AutoCloseable {
                 new AsyncSnmpApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncSystemApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncFilesApi(connection,commandEngine,lifecycle,callbackExecutor,fileDownloadExecutor));
+        this.diagnostics.sessionReady();
     }
 
     public static MikrotikRtrApiBuilder builder(){return new MikrotikRtrApiBuilder();}
@@ -138,13 +155,14 @@ public final class MikrotikRtrApi implements AutoCloseable {
 
     @Override public void close() throws MikrotikConnectionException {
         if(!lifecycle.beginClose()) return;
+        diagnostics.sessionClosing();
         MikrotikConnectionException closeFailure=null;
         fileDownloadExecutor.beginClose();
         streamRegistry.cancelActive();
         commandEngine.cancelActive();
         connection.removeConnectionListener(lifecycle);
-        try{connection.close();}catch(ApiConnectionException exception){closeFailure=new MikrotikConnectionException("Unable to close RouterOS connection cleanly",exception);}finally{
-            fileDownloadExecutor.finishClose(); drainDispatch(); timeoutScheduler.shutdown(); dispatchExecutor.shutdown(); if(ownedCallbackExecutor!=null)ownedCallbackExecutor.shutdown(); lifecycle.finishClose();
+        try{connection.close();}catch(ApiConnectionException exception){diagnostics.closeFailure(exception); closeFailure=new MikrotikConnectionException("Unable to close RouterOS connection cleanly",exception);}finally{
+            fileDownloadExecutor.finishClose(); drainDispatch(); timeoutScheduler.shutdown(); dispatchExecutor.shutdown(); if(ownedCallbackExecutor!=null)ownedCallbackExecutor.shutdown(); lifecycle.finishClose(); diagnostics.sessionClosed();
         }
         if(closeFailure!=null) throw closeFailure;
     }

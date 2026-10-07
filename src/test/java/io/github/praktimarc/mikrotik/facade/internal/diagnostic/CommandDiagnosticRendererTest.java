@@ -24,9 +24,9 @@ class CommandDiagnosticRendererTest {
                 queries);
 
         assertTrue(rendered.contains("path=/future/service/add"));
-        assertTrue(rendered.contains("name=raw-user"));
-        assertTrue(rendered.contains("future-service-password=<redacted>"));
-        assertTrue(rendered.contains("snmp-community=<redacted>"));
+        assertTrue(rendered.contains("argumentKeys=[name, future-service-password]"));
+        assertTrue(rendered.contains("queryKeys=[snmp-community]"));
+        assertFalse(rendered.contains("raw-user"));
         assertFalse(rendered.contains("TOP-SECRET"));
         assertFalse(rendered.contains("COMMUNITY"));
         assertFalse(rendered.contains("INLINE"));
@@ -44,8 +44,9 @@ class CommandDiagnosticRendererTest {
                 Map.of());
 
         assertFalse(sensitive.contains("private-community"));
-        assertTrue(sensitive.contains("name=<redacted>"));
-        assertTrue(ordinary.contains("name=ether1"));
+        assertFalse(ordinary.contains("ether1"));
+        assertTrue(sensitive.contains("argumentKeys=[name]"));
+        assertTrue(ordinary.contains("argumentKeys=[name]"));
     }
 
     @Test
@@ -59,6 +60,20 @@ class CommandDiagnosticRendererTest {
         assertTrue(rendered.contains("<redacted>"));
     }
 
+
+
+    @Test
+    void reflectedUnknownArgumentAndQueryValuesAreAlwaysRemoved() {
+        String rendered = CommandDiagnosticRenderer.sanitizeRouterOsMessage(
+                "/future/service/set",
+                "failed opaque-secret-value at 192.0.2.77",
+                Map.of("future-opaque-field", "opaque-secret-value"),
+                Map.of("address", "192.0.2.77"));
+
+        assertFalse(rendered.contains("opaque-secret-value"));
+        assertFalse(rendered.contains("192.0.2.77"));
+        assertTrue(rendered.contains("<redacted>"));
+    }
     @Test
     void commandPathNeverIncludesArgumentsOrQueries() {
         assertEquals("/ip/user/add",
