@@ -2,6 +2,7 @@ package io.github.praktimarc.mikrotik.facade.async;
 
 import io.github.praktimarc.mikrotik.facade.dhcp.AsyncDhcpServerApi;
 import io.github.praktimarc.mikrotik.facade.firewall.AsyncFirewallApi;
+import io.github.praktimarc.mikrotik.facade.files.AsyncFilesApi;
 import io.github.praktimarc.mikrotik.facade.interfaces.AsyncInterfacesApi;
 import io.github.praktimarc.mikrotik.facade.queue.AsyncQueueApi;
 import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
@@ -24,6 +25,7 @@ public final class AsyncMikrotikRtrApi {
     private final AsyncQueueApi queue;
     private final AsyncSnmpApi snmp;
     private final AsyncSystemApi system;
+    private final AsyncFilesApi files;
 
     /**
      * Creates the asynchronous facade tree for session wiring.
@@ -36,6 +38,7 @@ public final class AsyncMikrotikRtrApi {
      * @param queue asynchronous queue API
      * @param snmp asynchronous SNMP API
      * @param system asynchronous system/diagnostic API
+     * @param files asynchronous files API
      */
     public AsyncMikrotikRtrApi(
             AsyncRawApi raw,
@@ -45,7 +48,8 @@ public final class AsyncMikrotikRtrApi {
             AsyncInterfacesApi interfaces,
             AsyncQueueApi queue,
             AsyncSnmpApi snmp,
-            AsyncSystemApi system) {
+            AsyncSystemApi system,
+            AsyncFilesApi files) {
         this.raw = Objects.requireNonNull(raw, "raw");
         this.dhcpServer = Objects.requireNonNull(dhcpServer, "dhcpServer");
         this.firewall = Objects.requireNonNull(firewall, "firewall");
@@ -54,6 +58,7 @@ public final class AsyncMikrotikRtrApi {
         this.queue = Objects.requireNonNull(queue, "queue");
         this.snmp = Objects.requireNonNull(snmp, "snmp");
         this.system = Objects.requireNonNull(system, "system");
+        this.files = Objects.requireNonNull(files, "files");
     }
 
     /**
@@ -110,5 +115,10 @@ public final class AsyncMikrotikRtrApi {
     /** Returns the asynchronous typed system/diagnostic API. */
     public AsyncSystemApi system() {
         return system;
+    }
+
+    /** Returns the asynchronous typed files API. */
+    public AsyncFilesApi files() {
+        return files;
     }
 }

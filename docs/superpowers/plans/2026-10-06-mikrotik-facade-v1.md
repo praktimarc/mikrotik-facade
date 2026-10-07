@@ -767,18 +767,45 @@ binary download
 
 Tests:
 
-- [ ] metadata calls use normal engine.
-- [ ] successful binary download returns `FileDownloadResult`.
-- [ ] local IOException → `MikrotikFileException`.
-- [ ] RouterOS command failure remains `MikrotikCommandException`.
-- [ ] transport loss remains `MikrotikConnectionException`.
-- [ ] async download runs on bounded blocking executor.
-- [ ] callback executor is not occupied by transfer itself.
-- [ ] Future cancellation is documented/local best-effort and does not pretend to have an unavailable remote chunk tag.
-- [ ] facade close terminates transfer via connection shutdown.
-- [ ] unsupported RouterOS binary read → `MikrotikUnsupportedFeatureException`.
+- [x] metadata calls use normal engine.
+- [x] successful binary download returns `FileDownloadResult`.
+- [x] local IOException → `MikrotikFileException`.
+- [x] RouterOS command failure remains `MikrotikCommandException`.
+- [x] transport loss remains `MikrotikConnectionException`.
+- [x] async download runs on bounded blocking executor.
+- [x] callback executor is not occupied by transfer itself.
+- [x] Future cancellation is documented/local best-effort and does not pretend to have an unavailable remote chunk tag.
+- [x] facade close terminates transfer via connection shutdown.
+- [x] unsupported RouterOS binary read → `MikrotikUnsupportedFeatureException`.
 
 No upload and no byte-stream publisher in v1.
+
+
+Finalized Task-16 surface:
+
+```text
+mtApi.files().list()
+mtApi.files().find(properties)
+mtApi.files().findByName(name)
+mtApi.files().download(remoteFile, localPath)
+
+mtApi.async().files().list()
+mtApi.async().files().find(properties)
+mtApi.async().files().findByName(name)
+mtApi.async().files().download(remoteFile, localPath)
+```
+
+Metadata is handled exclusively through the normal `CommandEngine` and `/file/print`. `findByName` returns `Optional.empty()` for absence and raises `MikrotikDataException` for duplicate exact-name matches. `RouterFile` keeps stable metadata fields typed and preserves every unknown field through `raw()`.
+
+Binary content is delegated exclusively to the low-level `ApiConnection.downloadFile(...)` implementation. The facade does not duplicate `/file/read`, chunking, part-file staging, size validation or cleanup. Successful transfers return `FileDownloadResult(remoteFile, localFile, bytesWritten)`.
+
+Async binary transfers use a session-owned bounded executor with 2 workers and a queue capacity of 16. Transfer work never runs on the callback executor. Public completion is dispatched through the callback executor. Future cancellation is local best-effort only; the facade does not claim immediate RouterOS chunk cancellation because low-level chunk tags are not exposed.
+
+Controlled session close first blocks new/queued transfers, then closes the RouterOS connection, then shuts down the binary executor while callback infrastructure is still alive. This prevents queued transfers from starting during close and terminates running reads via connection shutdown.
+
+No binary upload, byte-stream publisher or InputStream API is added in v1. Legacy RouterOS-to-SFTP upload remains an explicitly documented raw consumer fallback.
+
+**Verification in this environment:** Maven remains unavailable. The Task-16 executor and files API compile under `javac --release 17` against signature-compatible project/low-level stubs, and a focused executor runtime harness passes.
 
 ---
 

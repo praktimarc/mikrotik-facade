@@ -156,6 +156,16 @@ Replace `util_changeSNMPV3UserToWrite(userName)` with explicit consumer policy: 
 
 Replace `pingAClient(ip)` with `system().ping(new PingRequest(ip, 10, Duration.ofMillis(500)))`. Convert the typed `PingResult` to the existing RPC DTO at the ISPSup boundary if that DTO must remain temporarily. Timeout/unreachable/packet loss are result data, not transport exceptions. Do not clamp packet-loss to 0..100 because RouterOS multicast ping can legitimately produce negative percentages when several hosts reply to one request.
 
+### Task 16 file primitives now available
+
+Replace `util_CheckIfFileExists(fileName)` with `files().findByName(fileName)`. Absence is `Optional.empty()`; do not recreate `MethodCallResult` or parse protocol markers.
+
+Replace `mikroTik_fetchSmallFileByNameViaApi(fileName)` with `files().download(fileName, localPath)` or the async equivalent. The old fixed RouterOS id and 4-KB text assumption were implementation bugs and must not be migrated. The facade returns the actual local path and byte count; ISPSup should decode the downloaded bytes only where the application knows the file is textual.
+
+Async file transfer uses the facade's dedicated bounded blocking executor. Cancelling its Future is local best-effort and must not be presented as proof that the router-side current chunk was immediately cancelled. Closing the owning facade session is the supported way to force connection-level termination of a running transfer.
+
+`analyze_SendFileFromGWViaSFTP(fileName)` remains an explicit consumer-side `raw()` fallback if current ISPSup still requires RouterOS `/tool/fetch` SFTP upload. Do not move its destination host, destination path, credentials or environment policy into `mikrotik-facade`.
+
 ## Final migration handoff requirements
 
 After facade stabilization, regenerate the migration handoff from finished facade code and then-current ISPSup source. Per old method include classification, new facade calls, imports, DTO mapping, exception and `Optional` changes, session ownership, compatibility implications, actual callers, tests, and debt to remove.

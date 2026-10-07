@@ -1705,6 +1705,28 @@ keinen InputStream Download
 keinen Binary Upload
 ```
 
+
+Task 16 finalisiert diese Architektur wie folgt:
+
+```java
+mtApi.files().list();
+mtApi.files().find(properties);
+mtApi.files().findByName(name);
+mtApi.files().download(remoteFile, localPath);
+
+mtApi.async().files().download(remoteFile, localPath);
+```
+
+`RouterFile` modelliert `/file/print`-Metadaten und behält unbekannte Felder in `raw()`. Exakte Namenssuche liefert `Optional.empty()` bei Abwesenheit und behandelt Mehrdeutigkeit als Datenfehler.
+
+Der Binary-Pfad verwendet ausschließlich `ApiConnection.downloadFile(...)`. Die Facade implementiert weder Chunking noch `.part`-Handling erneut. `IOException` wird zu `MikrotikFileException`; Low-Level Connection-, Command- und Data-Fehler behalten ihre jeweilige Facade-Kategorie. Nur ein definitiver Category-0-Fehler, der einen fehlenden Binary-Read-Befehl bzw. dessen Chunk-Parameter beschreibt, wird zu `MikrotikUnsupportedFeatureException`. Es gibt keinen geratenen RouterOS-Version-Cutoff.
+
+Für Async-Downloads besitzt jede Facade-Session genau einen bounded `FileDownloadExecutor` mit zwei Worker-Threads und 16 Queue-Slots. Das Blocking-I/O läuft ausschließlich dort; Completion läuft über den bestehenden `callbackExecutor`. User-Cancellation kann einen lokalen Worker interrupten und queued work entfernen, garantiert aber keinen Remote-`/cancel` des aktuell internen Low-Level-Chunks.
+
+Beim kontrollierten `close()` wird der File-Executor zuerst für neue Arbeit geschlossen und queued work terminiert. Danach werden Streams und finite Commands gecancelt und die Connection geschlossen. Erst danach wird der File-Executor vollständig heruntergefahren, solange der Callback-Executor noch lebt. Ein aktiver Low-Level-Read wird dadurch durch Connection-Close beendet.
+
+Das alte ISPSup-`/tool/fetch`-SFTP-Uploadverhalten bleibt bewusst außerhalb des Files-Moduls: Zielhost, Zielpfad und Upload-Policy sind Consumer-Konfiguration und können bei weiterhin bestehendem Bedarf über `raw()` zusammengesetzt werden.
+
 ## 43. Logging
 
 Die Facade verwendet:
