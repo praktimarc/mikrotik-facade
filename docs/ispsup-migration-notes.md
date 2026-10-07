@@ -128,6 +128,16 @@ For the global access-system convention, find Mangle rules by the existing comme
 
 Mangle `setDisabled` and `remove` reuse the current authenticated facade session. The historical helper that opened a new handler before writes is obsolete and must not be migrated.
 
+### Task 13 WiFi registration primitives now available
+
+The facade now exposes `wifi().registrationTable()` and `async().wifi().registrationTable()`. Source resolution distinguishes legacy CAPsMAN and the RouterOS 7.13+ WiFi stack before interpreting rows. If both managers are relevant, the result is composite and each `WifiRegistration` retains its exact source. Empty tables are normal data, not fallback signals.
+
+ISPSup must not migrate the old `empty/trap => other stack` behavior. It also must not migrate the lexical `interface >= prefix && interface < prefix0` query workaround as a facade concern. `gateway_fetchRegistrationTableOfCapByName(...)` should obtain the source-resolved registration list and apply its CAP/interface naming convention explicitly at the consumer boundary.
+
+`WifiRegistration` does not contain a nested DHCP lease. Where the UI still needs that data, join through `dhcpServer().findLeaseByMac(...)` on the same open facade session. Do not recreate one `mikrotikHandler`/session per station.
+
+Legacy `rx-signal` and modern `signal` are exposed as one normalized dBm value. Source-specific raw fields, pair-shaped `packets`/`bytes`, exact rate strings and future unknown fields remain available through `raw()`.
+
 ## Final migration handoff requirements
 
 After facade stabilization, regenerate the migration handoff from finished facade code and then-current ISPSup source. Per old method include classification, new facade calls, imports, DTO mapping, exception and `Optional` changes, session ownership, compatibility implications, actual callers, tests, and debt to remove.

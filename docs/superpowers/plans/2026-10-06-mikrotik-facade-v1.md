@@ -621,13 +621,31 @@ wifi-qcom-ac
 
 Tests with fixtures:
 
-- [ ] Legacy-only CAPsMAN.
-- [ ] new-WiFi-only CAPsMAN.
-- [ ] both path families present but only one relevant.
-- [ ] both stacks simultaneously relevant → COMPOSITE.
-- [ ] empty registration table remains valid.
-- [ ] `rx-signal` and `signal` normalize to the same typed concept.
-- [ ] all source raw fields remain preserved.
+- [x] Legacy-only CAPsMAN.
+- [x] new-WiFi-only CAPsMAN.
+- [x] both path families present but only one relevant.
+- [x] both stacks simultaneously relevant → COMPOSITE.
+- [x] empty registration table remains valid.
+- [x] `rx-signal` and `signal` normalize to the same typed concept.
+- [x] all source raw fields remain preserved.
+
+
+Finalized Task-13 surface:
+
+```text
+mtApi.wifi().registrationTable()
+mtApi.async().wifi().registrationTable()
+```
+
+`WifiRegistration` keeps exact source provenance and the complete raw RouterOS record. Known registration fields are normalized without flattening source-specific or list-shaped data. In particular, legacy `rx-signal` and modern `signal` map to the same dBm concept; rates and paired packet/byte values remain lossless strings where RouterOS semantics are not a single scalar.
+
+Source selection is explicit. Legacy CAPsMAN relevance is selected through `/caps-man/manager/print`; modern WiFi CAPsMAN uses `/interface/wifi/capsman/print`. An installed RouterOS 7.13+ `wifi-qcom`/`wifi-qcom-ac` local driver is an additional modern-source hint, but `/interface/wifi/registration-table/print` must succeed before that standalone source is selected. Package names never prove authority by themselves. If both managers are relevant, the plan is `COMPOSITE`; no MAC/id deduplication occurs. A successful empty table is valid and never triggers fallback.
+
+The pre-7.13 `wifiwave2` name is retained as compatibility knowledge only. v1 does not silently invent a third `/interface/wifiwave2/...` source without a verified requirement and fixture.
+
+DHCP enrichment and CAP/interface-prefix filtering stay in ISPSup composition. The old N+1 handler creation and lexical range-query workaround are not reproduced.
+
+**Current environment verification:** Maven is not installed in the execution environment, so the exact Maven test command remains pending. The controlled Task-13 runtime harness passes 14/14 scenarios. Task-13 production and JUnit sources compile against verified/signature-compatible Java 17 surfaces; Javadoc/doclint reports no warnings from the new WiFi sources. The repository's two older facade-wiring tests also require replacement of their stale `new RouterOsEnvironment()` construction with the existing environment factory API.
 
 ---
 

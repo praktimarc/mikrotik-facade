@@ -3,6 +3,7 @@ package io.github.praktimarc.mikrotik.facade.async;
 import io.github.praktimarc.mikrotik.facade.dhcp.AsyncDhcpServerApi;
 import io.github.praktimarc.mikrotik.facade.firewall.AsyncFirewallApi;
 import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
+import io.github.praktimarc.mikrotik.facade.wifi.AsyncWifiApi;
 
 import java.util.Objects;
 
@@ -14,6 +15,7 @@ public final class AsyncMikrotikRtrApi {
     private final AsyncRawApi raw;
     private final AsyncDhcpServerApi dhcpServer;
     private final AsyncFirewallApi firewall;
+    private final AsyncWifiApi wifi;
 
     /**
      * Creates the asynchronous facade tree for session wiring.
@@ -21,11 +23,17 @@ public final class AsyncMikrotikRtrApi {
      * @param raw asynchronous raw API
      * @param dhcpServer asynchronous DHCP server API
      * @param firewall asynchronous firewall API
+     * @param wifi asynchronous WiFi/CAPsMAN API
      */
-    public AsyncMikrotikRtrApi(AsyncRawApi raw, AsyncDhcpServerApi dhcpServer, AsyncFirewallApi firewall) {
+    public AsyncMikrotikRtrApi(
+            AsyncRawApi raw,
+            AsyncDhcpServerApi dhcpServer,
+            AsyncFirewallApi firewall,
+            AsyncWifiApi wifi) {
         this.raw = Objects.requireNonNull(raw, "raw");
         this.dhcpServer = Objects.requireNonNull(dhcpServer, "dhcpServer");
         this.firewall = Objects.requireNonNull(firewall, "firewall");
+        this.wifi = Objects.requireNonNull(wifi, "wifi");
     }
 
     /**
@@ -46,8 +54,21 @@ public final class AsyncMikrotikRtrApi {
         return dhcpServer;
     }
 
-    /** Returns the asynchronous typed firewall API. */
+    /**
+     * Returns the asynchronous typed firewall API.
+     *
+     * @return asynchronous firewall API
+     */
     public AsyncFirewallApi firewall() {
         return firewall;
+    }
+
+    /**
+     * Returns the asynchronous compatibility-aware WiFi/CAPsMAN API.
+     *
+     * @return asynchronous WiFi/CAPsMAN API
+     */
+    public AsyncWifiApi wifi() {
+        return wifi;
     }
 }

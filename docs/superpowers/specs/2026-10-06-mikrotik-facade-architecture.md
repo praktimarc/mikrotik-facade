@@ -166,6 +166,21 @@ Der alte Workaround, vor einem Mangle-`set` eine neue RouterOS-Verbindung zu öf
 
 Bei `/ip/firewall/address-list` heißt die Gruppierungs-Property `list`. Der alte ISPSup-Query mit `address-list` wird nicht reproduziert. Die festen Bedeutungen von `active-clients` und `disable access system temporarily` bleiben Consumer-Policy.
 
+Task 13 finalisiert den WiFi-Registration-Slice:
+
+```java
+mtApi.wifi().registrationTable()
+mtApi.async().wifi().registrationTable()
+```
+
+`WifiRegistration` ist eine immutable `RouterOsEntity` mit vollständigem `raw()` und expliziter Source-Provenienz. Typisiert werden nur belegte stabile Felder. `signal` und `rx-signal` werden source-spezifisch zu einem dBm-Wert normalisiert; unbekannte Felder sowie nicht sinnvoll zu einem Scalar vereinfachbare Rate-/Counter-Darstellungen bleiben verlustfrei erhalten.
+
+Die Source-Resolution trennt weiterhin Capability, Source und Schema. Legacy CAPsMAN wird über `/caps-man/manager/print` bewertet, neues WiFi-CAPsMAN über `/interface/wifi/capsman/print`. Ein lokaler RouterOS-7.13+-WiFi-Stack mit `wifi-qcom`/`wifi-qcom-ac` kann den modernen Registration-Pfad zusätzlich relevant machen, muss `/interface/wifi/registration-table/print` aber erfolgreich verifizieren. Package-Namen sind Hinweise und niemals alleinige Source-Autorität. Sind beide Manager relevant, wird `COMPOSITE` verwendet; Records werden nicht nach MAC oder `.id` dedupliziert. Ein erfolgreich leeres Resultset bleibt ein gültiges Resultset.
+
+`wifiwave2` bleibt als historische Package-/Menüinformation im Compatibility-Katalog. Ohne verifizierte Fixture wird daraus keine zusätzliche `/interface/wifiwave2/...`-Facade-Source konstruiert.
+
+Der alte ISPSup-Handler filterte CAP-Interfaces über einen lexikalischen Range-Query und öffnete für jede Registration eine neue Session zur DHCP-Anreicherung. Beides bleibt Consumer-Komposition und wird nicht in die Facade übernommen.
+
 statt einer künstlichen Abbildung wie:
 
 ```java

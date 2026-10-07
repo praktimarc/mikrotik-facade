@@ -10,30 +10,25 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class DhcpFacadeWiringTest {
+class WifiFacadeWiringTest {
 
     @Test
-    void synchronousAndAsynchronousDhcpTreesAreExposedFromSessionRoot() throws Exception {
-        try (MikrotikRtrApi api = new MikrotikRtrApi(
-                new NoOpConnection(),
-                new SessionLifecycle(),
-                environment(),
-                Runnable::run)) {
-            assertNotNull(api.dhcpServer());
-            assertNotNull(api.async().dhcpServer());
-        }
-    }
-
-    private static RouterOsEnvironment environment() {
-        return RouterOsEnvironment.withPackages(
+    void synchronousAndAsynchronousWifiTreesAreExposedFromSessionRoot() throws Exception {
+        RouterOsEnvironment environment = RouterOsEnvironment.withPackages(
                 new RouterOsSystemInfo(
                         "7.20.4", "arm64", "test-board", "MikroTik", RouterOsRecord.empty()),
                 List.of());
+        try (MikrotikRtrApi api = new MikrotikRtrApi(
+                new NoOpConnection(),
+                new SessionLifecycle(),
+                environment,
+                Runnable::run)) {
+            assertNotNull(api.wifi());
+            assertNotNull(api.async().wifi());
+        }
     }
 
     private static final class NoOpConnection extends ApiConnection {
-        @Override
-        public void close() {
-        }
+        @Override public void close() {}
     }
 }
