@@ -286,6 +286,7 @@ class CommandEngineTest {
         try {
             AtomicReference<String> mappingThread = new AtomicReference<>();
             AtomicReference<String> userThread = new AtomicReference<>();
+            AtomicReference<String> completionThread = new AtomicReference<>();
             CountDownLatch userDone = new CountDownLatch(1);
 
             RouterOsOperation<String> operation =
@@ -312,7 +313,10 @@ class CommandEngineTest {
                     connection,
                     Duration.ofSeconds(10),
                     dispatch,
-                    callback,
+                    task -> callback.execute(() -> {
+                        completionThread.set(Thread.currentThread().getName());
+                        task.run();
+                    }),
                     new ManualScheduler());
 
             CompletableFuture<String> future = engine.executeAsync(operation);
@@ -335,7 +339,7 @@ class CommandEngineTest {
             assertTrue(
                     mappingThread.get().startsWith("dispatch-thread"));
             assertTrue(
-                    userThread.get().startsWith("callback-thread"));
+                    completionThread.get().startsWith("callback-thread"));
             assertFalse(
                     mappingThread.get().contains("routeros-processor"));
             assertFalse(
