@@ -37,3 +37,7 @@ This is a **targeted repository hygiene check**, not a complete security audit. 
 - No binary upload API; the existing low-level binary download's cancellation cannot promise remote cancellation.
 
 For migration semantics and source evidence, see [functional-parity.md](functional-parity.md) and [ispsup-migration-notes.md](ispsup-migration-notes.md). For the exact low-level contract, see [low-level-contract.md](low-level-contract.md).
+
+## Legacy-data sanitization (2026-10-08)
+
+The public facade fixtures were rewritten with synthetic DHCP/WiFi/router examples. Historic application-specific address-list names, Mangle comments, site-device identifiers and CMTS markers in the public architectural/migration documents were replaced by semantic placeholders. SNMP tests use `example-community` and deliberately fake credential values; this is not evidence that a real credential was compromised. The GitHub Actions build includes an additional pinned Gitleaks action to scan repository changes for likely secrets. **The scan supplements, but does not replace, manual review** and cannot guarantee a repository is free of confidential architecture or values embedded in Git history.

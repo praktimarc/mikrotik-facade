@@ -178,7 +178,7 @@ getFirewallStateForClientIP
 → COMPOSED
 → firewall().addressList() generic query
 → /ip/firewall/address-list/print
-→ ISPSup itself interprets active-clients membership as client firewall state
+→ ISPSup itself interprets <example-access-list> membership as client firewall state
 ```
 
 Rules:
@@ -591,7 +591,7 @@ mtApi.async().firewall().mangle()
 mtApi.async().firewall().addressList()
 ```
 
-Reads use equality properties via `RouterOsProperties`; flexible adds use the same property model and expose terminal `ret` as `Optional<String>`. Filter and Mangle provide `setDisabled(id, state)`; Mangle additionally provides `remove(id)`. No ISPSup-specific `active-clients` or global access-system semantics are embedded in the facade.
+Reads use equality properties via `RouterOsProperties`; flexible adds use the same property model and expose terminal `ret` as `Optional<String>`. Filter and Mangle provide `setDisabled(id, state)`; Mangle additionally provides `remove(id)`. No ISPSup-specific `<example-access-list>` or global access-system semantics are embedded in the facade.
 
 The legacy `getFireWallStateForClientIp` query used `address-list` under `/ip/firewall/address-list`. Task 12 corrects this to the RouterOS entry property `list`; `address-list` remains a separate firewall rule matcher/action property and is not used for address-list membership lookup.
 
@@ -692,7 +692,7 @@ mtApi.async().interfaces().addresses(...)
 
 Monitoring is a cold `Flow.Publisher` backed by the existing `RouterOsPublisher` engine and the continuous `/interface/monitor-traffic` command. The per-subscription bounded queue is 64 records. Flow cancellation maps to the existing RouterOS tag cancellation path. A session-scoped `StreamRegistry` makes controlled `MikrotikRtrApi.close()` cancel active monitor subscriptions before finite commands and also closes the race where registration happens after close has begun.
 
-`interfaces().addresses(...)` provides the reusable primitive required by ISPSup `getCMTSIp()`; the fixed `cmts-internal` comment and last-octet-minus-one rule remain consumer policy and are not encoded in the facade.
+`interfaces().addresses(...)` provides the reusable primitive required by ISPSup `getCMTSIp()`; the fixed `<example-cmts-marker>` comment and last-octet-minus-one rule remain consumer policy and are not encoded in the facade.
 
 **Current environment verification:** Maven is not installed in the execution environment, so the exact Maven/JUnit command remains pending. All Task-14 production and JUnit sources compile under `javac --release 17` against verified/signature-compatible surfaces. A focused runtime harness passes 9/9 mapping, optional-counter, raw-preservation, query-path, and stream-registry scenarios. The integration tests additionally cover cold monitoring, sample mapping, tag cancellation, and session-close cancellation when run under the project JUnit environment.
 
@@ -739,7 +739,7 @@ mtApi.async().system().ping(request)
 
 Queue-type mapping keeps RouterOS rate/limit/burst quantities lossless as strings because legitimate RouterOS renderings can contain unit suffixes such as `KiB`; stable masks, booleans and burst-time are typed. PCQ fields remain optional for non-PCQ queue kinds and every source property remains in `raw()`.
 
-SNMP exposes communities rather than the misleading legacy “SNMPv3 user” naming. The legacy hard-coded `admin` policy stays in ISPSup. Community lookup reads the typed community list and filters locally so the community value is not placed into a command query. Generic property writes and `setWriteAccess` reuse the same authenticated session. Credential-bearing authentication/encryption password fields have no typed getters and remain available only through `raw()`. Diagnostics additionally treat the `name` argument as sensitive specifically for `/snmp/community/...` paths.
+SNMP exposes communities rather than the misleading legacy “SNMPv3 user” naming. The legacy hard-coded `example-community` policy stays in ISPSup. Community lookup reads the typed community list and filters locally so the community value is not placed into a command query. Generic property writes and `setWriteAccess` reuse the same authenticated session. Credential-bearing authentication/encryption password fields have no typed getters and remain available only through `raw()`. Diagnostics additionally treat the `name` argument as sensitive specifically for `/snmp/community/...` paths.
 
 Ping requests are always finite because `count > 0` is mandatory. Optional intervals must be positive whole milliseconds. `PingResult` retains all reply/status records and uses the latest usable cumulative summary from normal records, or terminal completion properties when supplied by the transport. 100% loss is normal data. RouterOS multicast semantics can produce `received > sent` and negative packet-loss percentages, so those values are preserved rather than rejected.
 

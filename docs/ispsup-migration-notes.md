@@ -110,19 +110,19 @@ Move deployment destination/configuration to ISPSup. The public facade must not 
 
 ### Client firewall state uses Address List
 
-The real September handler implements `getFireWallStateForClientIp` through `/ip/firewall/address-list/print` and the fixed ISPSup list `active-clients`. Earlier design examples used Mangle as an illustrative assumption. The reusable primitive is `firewall().addressList()`; ISPSup keeps the meaning entry exists ⇒ client access/firewall state.
+The real September handler implements `getFireWallStateForClientIp` through `/ip/firewall/address-list/print` and the fixed ISPSup list `<example-access-list>`. Earlier design examples used Mangle as an illustrative assumption. The reusable primitive is `firewall().addressList()`; ISPSup keeps the meaning entry exists ⇒ client access/firewall state.
 
 Mangle remains required by separate reset/global-state methods.
 
 ### Global access-system state is consumer policy
 
-The comment `disable access system temporarily` identifies a Mangle rule. Old semantics treat a disabled rule as an active access system, so `setFireWallActivatedOnTheNas(true)` writes `disabled=true`. The facade exposes the rule and `setDisabled`; the inversion belongs to ISPSup and needs consumer tests.
+The comment `<example-access-rule-comment>` identifies a Mangle rule. Old semantics treat a disabled rule as an active access system, so `setFireWallActivatedOnTheNas(true)` writes `disabled=true`. The facade exposes the rule and `setDisabled`; the inversion belongs to ISPSup and needs consumer tests.
 
 ### Task 12 firewall primitives now available
 
 The facade now exposes `firewall().filter()`, `firewall().mangle()` and `firewall().addressList()` with mirrored async APIs. ISPSup should compose its existing business behavior from these generic primitives.
 
-For client firewall state, query the address-list entry properties `list=active-clients` and `address=<client>`. Do not preserve the old handler's `address-list=active-clients` query key.
+For client firewall state, query the address-list entry properties `list=<example-access-list>` and `address=<client>`. Do not preserve the old handler's `address-list=<example-access-list>` query key.
 
 For the global access-system convention, find Mangle rules by the existing comment in ISPSup and interpret/invert `disabled` there. For client reset, ISPSup may explicitly deduplicate ids collected from src/dst lookups if that is the desired business behavior; the facade itself does not perform speculative deduplication.
 
@@ -142,7 +142,7 @@ Legacy `rx-signal` and modern `signal` are exposed as one normalized dBm value. 
 
 The facade now exposes `interfaces().list(...)`, `interfaces().addresses(...)`, mirrored finite async reads, and `interfaces().monitor(interfaceName)` for continuous traffic samples.
 
-For `getCMTSIp()`, ISPSup should query `interfaces().addresses(RouterOsProperties.builder().set("comment", "cmts-internal").build())`, then apply its existing site convention itself. The facade deliberately does not know that `cmts-internal` has a special meaning and does not subtract one from an IPv4 octet.
+For `getCMTSIp()`, ISPSup should query `interfaces().addresses(RouterOsProperties.builder().set("comment", "<example-cmts-marker>").build())`, then apply its existing site convention itself. The facade deliberately does not know that `<example-cmts-marker>` has a special meaning and does not subtract one from an IPv4 octet.
 
 Interface and monitor DTO migration should treat hardware-/driver-dependent counters as optional. Unknown RouterOS properties remain available through `raw()`; callers must not assume that every Ethernet, bridge, VLAN, tunnel, or virtual interface exposes the same counters.
 
@@ -152,7 +152,7 @@ Long-running traffic monitoring is Flow-based. ISPSup must retain and cancel the
 
 For the legacy PCQ report, use `queue().type().find(RouterOsProperties.builder().set("default", "no").build())`. Do not assume every queue type is PCQ. PCQ rate/limit/burst quantities are returned losslessly as strings because legitimate RouterOS formatting can include units; ISPSup may convert the exact values for its report where appropriate.
 
-Replace `util_changeSNMPV3UserToWrite(userName)` with explicit consumer policy: locate the intended community through `snmp().findCommunityByName(...)`, require/use its RouterOS id, then call `snmp().setWriteAccess(id, true)`. The facade does not hard-code `admin`, ignores no user argument, opens no helper session, and returns no `MethodCallResult`. Community credentials remain sensitive; avoid logging `raw()` community records.
+Replace `util_changeSNMPV3UserToWrite(userName)` with explicit consumer policy: locate the intended community through `snmp().findCommunityByName(...)`, require/use its RouterOS id, then call `snmp().setWriteAccess(id, true)`. The facade does not hard-code `example-community`, ignores no user argument, opens no helper session, and returns no `MethodCallResult`. Community credentials remain sensitive; avoid logging `raw()` community records.
 
 Replace `pingAClient(ip)` with `system().ping(new PingRequest(ip, 10, Duration.ofMillis(500)))`. Convert the typed `PingResult` to the existing RPC DTO at the ISPSup boundary if that DTO must remain temporarily. Timeout/unreachable/packet loss are result data, not transport exceptions. Do not clamp packet-loss to 0..100 because RouterOS multicast ping can legitimately produce negative percentages when several hosts reply to one request.
 
@@ -191,3 +191,7 @@ Destructive actions such as Mangle-rule and DHCP-lease removal must document ord
 ## Documentation impact
 
 Task 2 changes design/migration documentation only. The binding architecture/plan examples that described `getFirewallStateForClientIP` as a Mangle lookup are corrected to Address List so they no longer contradict the real-source inventory.
+
+## Public example-data hygiene
+
+Published test fixtures use synthetic hosts, locally administered demonstration MAC addresses, and [documentation IPv4 address blocks](https://www.rfc-editor.org/rfc/rfc5737). Historical ISPSup-specific names and rule comments are replaced with descriptive placeholders in this public repository. These placeholders intentionally preserve the **behavioral** migration mapping without disclosing legacy customer/site configuration; re-check exact production conventions only in the private ISPSup environment. `admin`, when encountered in external RouterOS documentation, is a generic name and not evidence of a leaked credential.

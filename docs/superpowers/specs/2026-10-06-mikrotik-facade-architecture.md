@@ -164,7 +164,7 @@ Flexible `add(...)`-Operationen verwenden `RouterOsProperties` und geben termina
 
 Der alte Workaround, vor einem Mangle-`set` eine neue RouterOS-Verbindung zu öffnen, wird nicht übernommen. Alle Reads und Writes laufen über dieselbe gesunde Session und dieselbe Command Engine.
 
-Bei `/ip/firewall/address-list` heißt die Gruppierungs-Property `list`. Der alte ISPSup-Query mit `address-list` wird nicht reproduziert. Die festen Bedeutungen von `active-clients` und `disable access system temporarily` bleiben Consumer-Policy.
+Bei `/ip/firewall/address-list` heißt die Gruppierungs-Property `list`. Der alte ISPSup-Query mit `address-list` wird nicht reproduziert. Die festen Bedeutungen von `<example-access-list>` und `<example-access-rule-comment>` bleiben Consumer-Policy.
 
 Task 13 finalisiert den WiFi-Registration-Slice:
 
@@ -198,7 +198,7 @@ mtApi.async().interfaces().addresses();
 
 Ein sessionweiter `StreamRegistry` registriert die von Interfaces-Monitoring exponierten Flow-Subscriptions. `MikrotikRtrApi.close()` ruft zuerst `streamRegistry.cancelActive()`, danach `commandEngine.cancelActive()`. Die Registry besitzt zusätzlich einen irreversiblen Closing-Marker: versucht ein verzögertes `onSubscribe` nach begonnenem Close noch eine Subscription zu registrieren, wird sie sofort gecancelt und startet keinen neuen RouterOS-Command.
 
-Die ISPSup-Regel `comment=cmts-internal` plus „letztes IPv4-Oktett minus eins“ bleibt Consumer-Policy. Die Facade liefert lediglich die generischen Address-Records.
+Die ISPSup-Regel `comment=<example-cmts-marker>` plus „letztes IPv4-Oktett minus eins“ bleibt Consumer-Policy. Die Facade liefert lediglich die generischen Address-Records.
 
 Task 15 finalisiert Queue, SNMP und System/Ping:
 
@@ -216,7 +216,7 @@ mtApi.system().ping(request);
 
 Die Async-Varianten spiegeln alle endlichen Operationen. Queue-Type-Properties sind kind-abhängig. `QueueType` verlangt nur den Namen; PCQ-spezifische Werte bleiben optional. Rate-/Limit-/Burst-Quantitäten werden bewusst verlustfrei als Strings exponiert, weil RouterOS sowohl nackte numerische API-Werte als auch unit-dekorierte Darstellungen wie `50KiB` kennt. Formatstabile Masken, `default` und `pcq-burst-time` werden typisiert.
 
-`SnmpApi` modelliert `/snmp/community`, nicht einen fiktiven SNMPv3-User-Baum. Die alte ISPSup-Methode ignorierte ihr User-Argument und änderte die Community `admin`; diese Policy wird nicht in die Facade übernommen. Community-Lookup filtert den vollständigen typisierten Read lokal und legt den Community-Namen nicht als RouterOS-Query in Diagnosekontext. Generische Property-Writes laufen über `/snmp/community/set` mit exakter `.id`; `setWriteAccess` ist die stabile Convenience. Auth-/Encryption-Passwörter besitzen keine typisierten Getter. Die zentrale Redaction behandelt zusätzlich `name` ausschließlich unter `/snmp/community/...` als sensitiv.
+`SnmpApi` modelliert `/snmp/community`, nicht einen fiktiven SNMPv3-User-Baum. Die alte ISPSup-Methode ignorierte ihr User-Argument und änderte die Community `example-community`; diese Policy wird nicht in die Facade übernommen. Community-Lookup filtert den vollständigen typisierten Read lokal und legt den Community-Namen nicht als RouterOS-Query in Diagnosekontext. Generische Property-Writes laufen über `/snmp/community/set` mit exakter `.id`; `setWriteAccess` ist die stabile Convenience. Auth-/Encryption-Passwörter besitzen keine typisierten Getter. Die zentrale Redaction behandelt zusätzlich `name` ausschließlich unter `/snmp/community/...` als sensitiv.
 
 `SystemApi.ping(PingRequest)` ist stets endlich: `count` ist obligatorisch und positiv. `PingResult` trennt einzelne Reply-/Statusrecords von der kumulativen Statistik und behält die Summary ebenfalls als `raw()`. Die letzte verwertbare Summary gewinnt, sofern die Completion-Properties keine Summary liefern. Timeout/Unreachable und 100% Paketverlust sind normale Ping-Ergebnisse. Multicast kann mehrere Antworten pro Request und dadurch negative RouterOS-`packet-loss`-Werte erzeugen; deshalb wird weder `received <= sent` noch ein künstlicher Loss-Bereich 0..100 erzwungen.
 
@@ -2077,7 +2077,7 @@ Facade:
 firewall().addressList().find(...)
 
 ISPSup:
-interpretiert "Eintrag in active-clients vorhanden" wieder als seinen Client-Firewall-State
+interpretiert "Eintrag in <example-access-list> vorhanden" wieder als seinen Client-Firewall-State
 ```
 
 Für die Parity-Matrix gilt zusätzlich die Klassifizierung:

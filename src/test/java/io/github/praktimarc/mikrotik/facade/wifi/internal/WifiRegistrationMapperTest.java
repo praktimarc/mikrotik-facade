@@ -25,10 +25,10 @@ class WifiRegistrationMapperTest {
                 fixture("/fixtures/wifi/modern-registration.properties"),
                 RegisteredClientsSourceResolver.MODERN_SOURCE);
 
-        assertEquals(-53L, legacy.signalDbm().orElseThrow());
-        assertEquals(-54L, modern.signalDbm().orElseThrow());
-        assertEquals("4E:D8:49:B8:73:4E", legacy.macAddress().orElseThrow());
-        assertEquals("4E:D8:49:B8:73:4E", modern.macAddress().orElseThrow());
+        assertEquals(-60L, legacy.signalDbm().orElseThrow());
+        assertEquals(-61L, modern.signalDbm().orElseThrow());
+        assertEquals("02:00:00:00:04:42", legacy.macAddress().orElseThrow());
+        assertEquals("02:00:00:00:04:42", modern.macAddress().orElseThrow());
         assertTrue(modern.authorized().orElseThrow());
     }
 
@@ -53,8 +53,8 @@ class WifiRegistrationMapperTest {
                 fixture("/fixtures/wifi/modern-registration.properties"),
                 RegisteredClientsSourceResolver.MODERN_SOURCE);
 
-        assertEquals("6558776,1754538", legacy.packets().orElseThrow());
-        assertEquals("8324668190,187580746", legacy.bytes().orElseThrow());
+        assertEquals("120,340", legacy.packets().orElseThrow());
+        assertEquals("12000,34000", legacy.bytes().orElseThrow());
         assertEquals("866.6Mbps-80MHz/2S/SGI", modern.txRate().orElseThrow());
         assertEquals("kept", legacy.raw().find("legacy-extra").orElseThrow());
         assertEquals("kept", modern.raw().find("modern-extra").orElseThrow());

@@ -24,20 +24,20 @@ class DhcpLeaseMapperTest {
     void mapsExactLegacyLeaseFieldsAndFixesActiveClientIdRegression() throws Exception {
         DhcpLease lease = mapper.map(fixture("legacy-lease.properties"));
 
-        assertEquals("192.168.250.44", lease.address().orElseThrow());
-        assertEquals("2C:C8:1B:C6:5C:C5", lease.macAddress().orElseThrow());
-        assertEquals("1:2c:c8:1b:c6:5c:c5", lease.clientId().orElseThrow());
-        assertEquals("1:2c:c8:1b:c6:5c:c5", lease.activeClientId().orElseThrow());
-        assertEquals("sw-fr-41-131 eth 0/14:1", lease.agentCircuitId().orElseThrow());
+        assertEquals("192.0.2.44", lease.address().orElseThrow());
+        assertEquals("02:00:00:00:01:44", lease.macAddress().orElseThrow());
+        assertEquals("1:02:00:00:00:01:44", lease.clientId().orElseThrow());
+        assertEquals("1:02:00:00:00:01:44", lease.activeClientId().orElseThrow());
+        assertEquals("example-switch eth 0/14:1", lease.agentCircuitId().orElseThrow());
         assertEquals("ether1", lease.agentRemoteId().orElseThrow());
-        assertEquals(579L, lease.expiresAfter().orElseThrow().getSeconds());
-        assertEquals(21L, lease.lastSeen().orElseThrow().getSeconds());
+        assertEquals(330L, lease.expiresAfter().orElseThrow().getSeconds());
+        assertEquals(12L, lease.lastSeen().orElseThrow().getSeconds());
         assertTrue(lease.dynamic().orElseThrow());
         assertFalse(lease.radius().orElseThrow());
         assertFalse(lease.blocked().orElseThrow());
         assertFalse(lease.disabled().orElseThrow());
         assertEquals("kept", lease.raw().find("future-property").orElseThrow());
-        assertEquals("*64", lease.raw().find(".id").orElseThrow());
+        assertEquals("*D1", lease.raw().find(".id").orElseThrow());
     }
 
     @Test
@@ -45,7 +45,7 @@ class DhcpLeaseMapperTest {
         DhcpLease lease = mapper.map(fixture("active-agent-lease.properties"));
         assertEquals("ether2:1", lease.agentCircuitId().orElseThrow());
         assertEquals(
-                "31:38:3a:66:64:3a:37:34:3a:61:65:3a:37:66:3a:38:37",
+                "30:32:3a:30:30:3a:30:30:3a:30:31",
                 lease.agentRemoteId().orElseThrow());
     }
 

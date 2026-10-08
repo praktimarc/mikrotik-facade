@@ -16,31 +16,31 @@ class SnmpApiTest {
         SnmpCommunity community = new SnmpCommunityMapper().map(
                 io.github.praktimarc.mikrotik.facade.RouterOsRecord.of(Map.ofEntries(
                         Map.entry(".id", "*1"),
-                        Map.entry("name", "admin"),
+                        Map.entry("name", "example-community"),
                         Map.entry("address", "0.0.0.0/0"),
                         Map.entry("security", "private"),
                         Map.entry("read-access", "true"),
                         Map.entry("write-access", "false"),
                         Map.entry("authentication-protocol", "SHA1"),
                         Map.entry("encryption-protocol", "AES"),
-                        Map.entry("authentication-password", "secret-auth"),
-                        Map.entry("encryption-password", "secret-priv"))));
+                        Map.entry("authentication-password", "test-only-auth"),
+                        Map.entry("encryption-password", "test-only-privacy"))));
 
-        assertEquals("admin", community.name());
+        assertEquals("example-community", community.name());
         assertFalse(community.writeAccess().orElseThrow());
-        assertEquals("secret-auth", community.raw().find("authentication-password").orElseThrow());
+        assertEquals("test-only-auth", community.raw().find("authentication-password").orElseThrow());
     }
 
     @Test
     void findByNameDoesNotPutCommunityValueIntoCommandQuery() throws Exception {
-        var operation = SnmpApi.findCommunityByNameOperation("admin", new SnmpCommunityMapper());
+        var operation = SnmpApi.findCommunityByNameOperation("example-community", new SnmpCommunityMapper());
         assertEquals("/snmp/community/print", operation.command().path());
         assertTrue(operation.command().queries().isEmpty());
 
         var result = operation.map(CommandResult.ofRaw(
                 List.of(
                         Map.of(".id", "*1", "name", "public"),
-                        Map.of(".id", "*2", "name", "admin", "write-access", "false")),
+                        Map.of(".id", "*2", "name", "example-community", "write-access", "false")),
                 Map.of()));
 
         assertEquals("*2", result.orElseThrow().id().orElseThrow());
@@ -48,12 +48,12 @@ class SnmpApiTest {
 
     @Test
     void duplicateCommunityNameIsDataError() {
-        var operation = SnmpApi.findCommunityByNameOperation("admin", new SnmpCommunityMapper());
+        var operation = SnmpApi.findCommunityByNameOperation("example-community", new SnmpCommunityMapper());
         assertThrows(io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException.class,
                 () -> operation.map(CommandResult.ofRaw(
                         List.of(
-                                Map.of(".id", "*1", "name", "admin"),
-                                Map.of(".id", "*2", "name", "admin")),
+                                Map.of(".id", "*1", "name", "example-community"),
+                                Map.of(".id", "*2", "name", "example-community")),
                         Map.of())));
     }
 
