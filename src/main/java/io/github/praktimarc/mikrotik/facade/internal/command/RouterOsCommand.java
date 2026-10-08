@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.internal.command;
 
+import io.github.praktimarc.mikrotik.facade.RouterOsQuery;
 import io.github.praktimarc.mikrotik.facade.internal.diagnostic.CommandDiagnosticRenderer;
 
 import java.util.ArrayList;
@@ -18,6 +19,8 @@ public final class RouterOsCommand {
     private final Map<String, String> arguments;
     private final List<String> flags;
     private final Map<String, String> queries;
+    private final List<RouterOsQuery> advancedQueries;
+    private final RouterOsQuery queryExpression;
     private final List<String> properties;
 
     private RouterOsCommand(Builder builder) {
@@ -25,6 +28,8 @@ public final class RouterOsCommand {
         this.arguments = immutableOrderedCopy(builder.arguments);
         this.flags = List.copyOf(builder.flags);
         this.queries = immutableOrderedCopy(builder.queries);
+        this.advancedQueries = List.copyOf(builder.advancedQueries);
+        this.queryExpression = combineQueries(this.queries, this.advancedQueries);
         this.properties = List.copyOf(builder.properties);
     }
 
@@ -48,9 +53,45 @@ public final class RouterOsCommand {
         return flags;
     }
 
-    /** Returns immutable equality queries in insertion order. */
+    /**
+     * Returns immutable legacy equality queries in insertion order.
+     *
+     * <p>Advanced query expressions are available through {@link #queryExpression()}.</p>
+     */
     public Map<String, String> queries() {
         return queries;
+    }
+
+    /** Returns advanced query expressions added directly to the command. */
+    public List<RouterOsQuery> advancedQueries() {
+        return advancedQueries;
+    }
+
+    /** Returns the complete combined query expression, or null when no query exists. */
+    public RouterOsQuery queryExpression() {
+        return queryExpression;
+    }
+
+    /** Returns all distinct query property names without exposing query values. */
+    public List<String> queryPropertyNames() {
+        return queryExpression == null ? List.of() : queryExpression.propertyNames();
+    }
+
+    /**
+     * Returns all query values under synthetic keys for error-message redaction.
+     *
+     * <p>The returned values must never be used for diagnostics.</p>
+     */
+    public Map<String, String> queryValuesForRedaction() {
+        if (queryExpression == null) {
+            return Map.of();
+        }
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        List<String> rawValues = queryExpression.values();
+        for (int index = 0; index < rawValues.size(); index++) {
+            values.put("query-value-" + index, rawValues.get(index));
+        }
+        return Collections.unmodifiableMap(values);
     }
 
     /** Returns immutable property selection in insertion order. */
@@ -71,18 +112,9 @@ public final class RouterOsCommand {
                 .append('=')
                 .append(quote(value)));
         flags.forEach(flag -> command.append(' ').append(flag));
-        if (!queries.isEmpty()) {
-            command.append(" where ");
-            boolean first = true;
-            for (Map.Entry<String, String> entry : queries.entrySet()) {
-                if (!first) {
-                    command.append(" and ");
-                }
-                command.append(entry.getKey())
-                        .append('=')
-                        .append(quote(entry.getValue()));
-                first = false;
-            }
+        if (queryExpression != null) {
+            command.append(" where ")
+                    .append(queryExpression.expression());
         }
         if (!properties.isEmpty()) {
             command.append(" return ");
@@ -99,6 +131,20 @@ public final class RouterOsCommand {
     @Override
     public String toString() {
         return CommandDiagnosticRenderer.structural(this);
+    }
+
+    private static RouterOsQuery combineQueries(
+            Map<String, String> legacyQueries,
+            List<RouterOsQuery> advancedQueries) {
+        RouterOsQuery combined = null;
+        for (Map.Entry<String, String> entry : legacyQueries.entrySet()) {
+            RouterOsQuery query = RouterOsQuery.eq(entry.getKey(), entry.getValue());
+            combined = combined == null ? query : combined.and(query);
+        }
+        for (RouterOsQuery query : advancedQueries) {
+            combined = combined == null ? query : combined.and(query);
+        }
+        return combined;
     }
 
     private static String validatePath(String path) {
@@ -161,6 +207,7 @@ public final class RouterOsCommand {
         private final LinkedHashMap<String, String> arguments = new LinkedHashMap<>();
         private final List<String> flags = new ArrayList<>();
         private final LinkedHashMap<String, String> queries = new LinkedHashMap<>();
+        private final List<RouterOsQuery> advancedQueries = new ArrayList<>();
         private final List<String> properties = new ArrayList<>();
 
         private Builder(String path) {
@@ -182,9 +229,20 @@ public final class RouterOsCommand {
             return this;
         }
 
-        /** Adds or replaces an equality query. */
+        /** Adds or replaces a legacy equality query. */
         public Builder query(String key, String value) {
             queries.put(validateName(key, "query name"), Objects.requireNonNull(value, "value"));
+            return this;
+        }
+
+        /**
+         * Adds an advanced RouterOS query expression and ANDs it with other query terms.
+         *
+         * <p>Use this form when the same RouterOS property must appear more than once,
+         * for example {@code interface=a OR interface=b}.</p>
+         */
+        public Builder query(RouterOsQuery query) {
+            advancedQueries.add(Objects.requireNonNull(query, "query"));
             return this;
         }
 

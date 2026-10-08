@@ -265,7 +265,7 @@ public final class CommandEngine {
                             context.operation(),
                             command.path(),
                             command.arguments(),
-                            command.queries()));
+                            command.queryValuesForRedaction()));
                 } catch (RuntimeException mappingFailure) {
                     diagnostics.internalError(
                             operationId,
@@ -304,7 +304,7 @@ public final class CommandEngine {
                     context.operation(),
                     command.path(),
                     command.arguments(),
-                    command.queries()));
+                    command.queryValuesForRedaction()));
             context.dispatchFinishedWithoutTag();
         } catch (RuntimeException unexpectedFailure) {
             diagnostics.internalError(

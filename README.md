@@ -50,3 +50,33 @@ The `router-it` profile requires `MIKROTIK_IT_HOST`, `MIKROTIK_IT_USERNAME`,
 `MIKROTIK_IT_PASSWORD` and `MIKROTIK_IT_PROFILE`. See
 `docs/routeros-test-profiles.md` for transport options and the seven documented target
 profiles, and `docs/low-level-contract.md` for the exact low-level guarantees.
+
+
+## Queries and regex filtering
+
+Advanced server-side query composition is available through `RouterOsQuery`:
+
+```java
+RouterOsQuery query =
+        RouterOsQuery.eq("interface", "cap-a")
+                .or(RouterOsQuery.eq("interface", "cap-b"));
+
+RawCommandResult result =
+        mtApi.raw()
+             .command("/interface/print")
+             .query(query)
+             .execute();
+```
+
+For real regular expressions use the explicitly client-side API:
+
+```java
+List<WifiRegistration> registrations =
+        mtApi.wifi().registrationTable(
+                ClientSideFilter.regex("interface", "^cap-[0-9]+-"));
+```
+
+Do not emulate regex/prefix matching with RouterOS `>` / `<` queries. Presence
+queries (`exists/notExists`) are also deliberately absent in v1 because the pinned
+low-level public parser cannot safely emit RouterOS `?name` / `?-name` query words.
+See `docs/query-filtering.md`.

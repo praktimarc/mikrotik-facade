@@ -87,3 +87,28 @@ Finite command diagnostics use local `session-N` / `op-N` correlation and struct
 ## Maintenance rule
 
 Before implementing a typed module, update the relevant rows with the actual RouterOS version/package/hardware evidence, exact property variants, fallback semantics, and concrete test fixtures. If a new case is not documented or observed reliably, prefer an absent typed value plus preserved raw data over a plausible-looking guess.
+
+
+## Query semantics
+
+The facade distinguishes RouterOS server queries from client-side filtering.
+
+Server-side `RouterOsQuery` supports only operations verified against the pinned public
+`mikrotik-java 3.0.8-praktimarc.4` string parser:
+
+```text
+eq / notEq / lt / gt / not / and / or
+```
+
+Repeated property names are valid through the expression model and are verified by a
+low-level wire contract test. Lexical `>` / `<` retain their real RouterOS comparison
+meaning and must not be used as a regex/prefix substitute.
+
+RouterOS presence query words (`?name`, `?-name`) are not exposed as typed
+`exists/notExists` in v1 because the pinned low-level public parser cannot safely emit
+them. This is a known low-level contract boundary, not a RouterOS protocol limitation.
+
+Regular expressions are explicit client-side operations through `ClientSideFilter`.
+They run on complete returned `RouterOsRecord` values and never alter source selection or
+server query semantics. The low-level contract includes a >60-kB text property to guard
+against truncation before local filtering.

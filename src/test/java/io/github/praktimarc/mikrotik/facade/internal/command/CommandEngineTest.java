@@ -3,6 +3,7 @@ package io.github.praktimarc.mikrotik.facade.internal.command;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikCommandException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikTimeoutException;
+import io.github.praktimarc.mikrotik.facade.RouterOsQuery;
 import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import me.legrange.mikrotik.ApiCommandException;
@@ -373,7 +374,8 @@ class CommandEngineTest {
                 public RouterOsCommand command() {
                     return RouterOsCommand.builder("/future/service/set")
                             .argument("opaque-secret-field", "UNCLASSIFIED-SECRET")
-                            .query("address", "192.0.2.77")
+                            .query(RouterOsQuery.eq("address", "192.0.2.77")
+                                    .or(RouterOsQuery.eq("address", "192.0.2.78")))
                             .build();
                 }
 
@@ -387,7 +389,7 @@ class CommandEngineTest {
             connection.awaitExecute();
             connection.listener.error(
                     new TestCommandException(
-                            "rejected UNCLASSIFIED-SECRET for 192.0.2.77",
+                            "rejected UNCLASSIFIED-SECRET for 192.0.2.77 or 192.0.2.78",
                             4));
 
             ExecutionException failure = assertThrows(
@@ -402,6 +404,7 @@ class CommandEngineTest {
             assertTrue(all.contains("category=4"));
             assertFalse(all.contains("UNCLASSIFIED-SECRET"));
             assertFalse(all.contains("192.0.2.77"));
+            assertFalse(all.contains("192.0.2.78"));
             assertFalse(logs.stream().anyMatch(line -> line.startsWith("ERROR:")));
         } finally {
             dispatch.shutdownNow();

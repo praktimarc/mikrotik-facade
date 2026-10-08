@@ -45,7 +45,7 @@ public final class CommandDiagnosticRenderer {
         return "command={path=" + command.path()
                 + ", argumentKeys=" + command.arguments().keySet()
                 + ", flags=" + command.flags()
-                + ", queryKeys=" + command.queries().keySet()
+                + ", queryKeys=" + command.queryPropertyNames()
                 + ", properties=" + command.properties()
                 + '}';
     }

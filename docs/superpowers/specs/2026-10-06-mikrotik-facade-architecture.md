@@ -179,7 +179,7 @@ Die Source-Resolution trennt weiterhin Capability, Source und Schema. Legacy CAP
 
 `wifiwave2` bleibt als historische Package-/Menüinformation im Compatibility-Katalog. Ohne verifizierte Fixture wird daraus keine zusätzliche `/interface/wifiwave2/...`-Facade-Source konstruiert.
 
-Der alte ISPSup-Handler filterte CAP-Interfaces über einen lexikalischen Range-Query und öffnete für jede Registration eine neue Session zur DHCP-Anreicherung. Beides bleibt Consumer-Komposition und wird nicht in die Facade übernommen.
+Der alte ISPSup-Handler filterte CAP-Interfaces über einen lexikalischen `>/<`-Range-Workaround. Task 19a ersetzt diese unsichere Pattern-Simulation durch `ClientSideFilter.regex(...)`; die Regex läuft nach dem Source-Read lokal auf vollständigen `RouterOsRecord`-Werten. Die frühere DHCP-Anreicherung pro Registration bleibt dagegen Consumer-Komposition und öffnet keine zusätzlichen Facade-Sessions.
 
 Task 14 finalisiert den Interface-/Monitoring-Slice:
 
@@ -358,23 +358,35 @@ Session state
 
 Ein RouterOS-Tag wird ausschließlich durch `ApiConnection` erzeugt und bleibt Transportdetail.
 
-Finalisierte v1-Struktur:
+Finalisierte Struktur einschließlich Task 19a:
 
 ```java
 RouterOsCommand.builder(path)
     .argument(name, value)
     .query(name, value)
+    .query(RouterOsQuery.eq("interface", "cap-a")
+            .or(RouterOsQuery.eq("interface", "cap-b")))
     .property(name)
     .build();
-
-command.path()
-command.arguments()
-command.queries()
-command.properties()
-command.serialize()
 ```
 
-Der Command ist ein immutable Snapshot. Argumente und Equality-Queries behalten ihre Einfügereihenfolge. Die Serialisierung verwendet ausschließlich die öffentliche Low-Level-String-API und quotiert Werte so, dass insbesondere `/` und `,` in Werten nicht als Parser-Syntax interpretiert werden. Ein Command-Pfad darf keine eingeschmuggelten Argumente oder Queries enthalten. `toString()` verwendet ausschließlich die zentrale redigierte Diagnostic-Darstellung.
+Die alte `.query(name,value)`-Oberfläche bleibt ein insertion-ordered Equality-Map-Modell mit Replace-Semantik. Advanced Queries werden zusätzlich als immutable `RouterOsQuery`-Ausdruck gehalten und mit vorhandenen Equality-Terms per AND kombiniert.
+
+Öffentlich unterstützt werden serverseitig nur die vom gepinnten Low-Level-Stringparser zuverlässig ausdrückbaren Operationen:
+
+```text
+eq
+notEq
+lt
+gt
+not
+and
+or
+```
+
+Damit können insbesondere mehrere Werte derselben Property korrekt als OR formuliert werden. RouterOS-Presence-Wörter `?name` / `?-name` werden in v1 nicht als `exists/notExists` angeboten, weil `mikrotik-java .4` dafür keine sichere öffentliche Parser-Oberfläche besitzt. Eine spätere Unterstützung erfordert zuerst eine Low-Level-API-Erweiterung und einen neuen Contract.
+
+Der Command ist ein immutable Snapshot. Die Serialisierung verwendet ausschließlich die öffentliche Low-Level-String-API. Ein Command-Pfad darf keine eingeschmuggelten Argumente oder Queries enthalten. Advanced-Query-Werte werden für Fehler-Redaction erfasst, aber niemals in `toString()` oder Diagnostics ausgegeben.
 
 ## 7. RouterOsRecord
 
@@ -1966,6 +1978,8 @@ unerwarteter Connection Loss → ConnectionListener
 intentional close → kein ConnectionListener
 fataler Loss terminiert aktive Commands und spätere Submissions
 byte-exakter, gechunkter Binary-Download parallel zu Text-Listenern
+Advanced-Query-Ausdrücke werden durch den öffentlichen Stringparser in korrekte Query-Stack-Wörter übersetzt
+lange Textproperties (>60 kB) werden ohne Truncation transportiert
 ```
 
 Ein späteres Upgrade von `mikrotik` ist daher kein rein mechanischer Versionswechsel. Die Contract-Suite muss gegen die neue Version erfolgreich sein oder die geänderte Semantik muss explizit in der Facade-Architektur akzeptiert werden.

@@ -957,6 +957,50 @@ Verification limitation in the current execution environment remains unchanged: 
 
 ---
 
+# Task 19a – Advanced server queries and client-side regex filtering
+
+**Files:**
+
+```text
+RouterOsQuery.java
+ClientSideFilter.java
+internal/command/RouterOsCommand.java
+raw/RawCommandBuilder.java
+raw/RawCommandResult.java
+wifi/WifiApi.java
+wifi/AsyncWifiApi.java
+docs/query-filtering.md
+```
+
+Requirements:
+
+- [x] preserve existing simple equality-query API.
+- [x] support repeated property names through a real expression tree.
+- [x] support server-side `eq`, `notEq`, `lt`, `gt`, `not`, `and`, `or`.
+- [x] do not implement regex as a fake RouterOS query operator.
+- [x] provide explicit Java-side regex/predicate filtering.
+- [x] provide sync/async WiFi registration convenience.
+- [x] provide raw-result client-side filtering convenience.
+- [x] redact all advanced-query values from diagnostics and reflected command failures.
+- [x] verify the pinned low-level parser emits the intended RouterOS query stack.
+- [x] add a >60-kB text-property low-level regression test.
+- [x] document that `exists/notExists` is blocked by the pinned public low-level parser.
+
+Compatibility decision:
+
+```text
+RouterOS protocol supports presence query words (?name / ?-name)
+mikrotik-java .4 public string parser cannot safely emit them
+→ v1 facade does not pretend to support exists/notExists
+→ requires a future low-level public raw-query-word API and version bump
+```
+
+Client-side regex is intentionally named as such. It uses Java `Pattern` /
+`Matcher.find()` after RouterOS records have been returned and therefore has different
+performance characteristics from a server-side query.
+
+---
+
 # Task 20 – Public documentation and release-readiness
 
 **Files:**

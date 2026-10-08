@@ -31,10 +31,16 @@ The suite pins these guarantees:
 | Intentional `ApiConnection.close()` is idempotent and does not emit connection-loss notification. | Controlled facade `OPEN/CLOSING/CLOSED` lifecycle. |
 | Fatal connection loss terminates active commands with `ApiConnectionException` and later submissions fail. | No transparent reconnect/replay and no hanging active facade futures. |
 | `downloadFile` is byte-exact, chunked, preserves the remote filename/query, stages local output safely and coexists with tagged text listeners. | Task-16 binary download facade delegates to the low-level implementation instead of reimplementing `/file/read`. |
+| Public string parsing translates supported boolean/comparison syntax to the expected RouterOS query stack, including repeated property names. | Task 19a `RouterOsQuery` serializes through the public low-level parser rather than internal query APIs. |
+| Text properties larger than 60 kB survive the public API byte-for-byte as complete strings. | Client-side regex operates on full `RouterOsRecord` values and must not inherit historical word-truncation behavior. |
 
 The binary contract fixture deliberately contains NUL bytes, non-UTF-8-looking byte values
 and RouterOS-protocol-looking byte sequences. Payload data is therefore tested as bytes,
 not text.
+
+Task 19a also pins the supported public string-parser query grammar. Presence query words
+(`?name` / `?-name`) remain outside the facade because this low-level release has no
+safe public parser syntax for them; no internal `impl.*` workaround is permitted.
 
 ## Upgrade rule
 

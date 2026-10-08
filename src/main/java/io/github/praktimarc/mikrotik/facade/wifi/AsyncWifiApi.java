@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.wifi;
 
+import io.github.praktimarc.mikrotik.facade.ClientSideFilter;
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikCommandException;
@@ -143,6 +144,32 @@ public final class AsyncWifiApi {
             } else {
                 result.completeExceptionally(unwrap(failure));
             }
+        }));
+        return result;
+    }
+
+    /**
+     * Reads the relevant registration tables and applies an explicit client-side filter.
+     *
+     * <p>Regex filtering executes locally after RouterOS has returned the registration rows.</p>
+     */
+    public CompletableFuture<List<WifiRegistration>> registrationTable(ClientSideFilter filter) {
+        ClientSideFilter checked = Objects.requireNonNull(filter, "filter");
+        CompletableFuture<List<WifiRegistration>> source = registrationTable();
+        CompositeFuture<List<WifiRegistration>> result = new CompositeFuture<>();
+        result.track(source);
+        source.whenComplete((registrations, failure) -> callbackExecutor.execute(() -> {
+            result.clear(source);
+            if (result.isCancelled()) {
+                return;
+            }
+            if (failure != null) {
+                result.completeExceptionally(unwrap(failure));
+                return;
+            }
+            result.complete(registrations.stream()
+                    .filter(registration -> checked.matches(registration.raw()))
+                    .toList());
         }));
         return result;
     }

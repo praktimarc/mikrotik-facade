@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.wifi;
 
+import io.github.praktimarc.mikrotik.facade.ClientSideFilter;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikCommandException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
@@ -151,6 +152,20 @@ public final class WifiApi {
             }
         }
         return resolver.map(plan.orElseThrow(), results, mapper);
+    }
+
+    /**
+     * Reads the relevant registration tables and applies an explicit client-side filter.
+     *
+     * <p>The filter is evaluated only after RouterOS has returned the records. In particular,
+     * regex matching is Java-side and must not be confused with a RouterOS API regex query.</p>
+     */
+    public List<WifiRegistration> registrationTable(ClientSideFilter filter)
+            throws MikrotikFacadeException {
+        ClientSideFilter checked = Objects.requireNonNull(filter, "filter");
+        return registrationTable().stream()
+                .filter(registration -> checked.matches(registration.raw()))
+                .toList();
     }
 
     /**

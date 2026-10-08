@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.wifi;
 
+import io.github.praktimarc.mikrotik.facade.ClientSideFilter;
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsPackage;
@@ -134,6 +135,59 @@ class WifiApiIntegrationTest {
 
 
 
+
+
+    @Test
+    void syncAndAsyncRegistrationRegexFilteringIsExplicitlyClientSide() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/interface/wifi/registration-table/print", rows(
+                        row(
+                                ".id", "*1",
+                                "interface", "cap-17-client-a",
+                                "mac-address", "11:22:33:44:55:66",
+                                "signal", "-42"),
+                        row(
+                                ".id", "*2",
+                                "interface", "other-client",
+                                "mac-address", "22:33:44:55:66:77",
+                                "signal", "-50"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            ClientSideFilter filter =
+                    ClientSideFilter.regex("interface", "^cap-17-");
+
+            WifiApi sync = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment("7.20.4", List.of("wifi-qcom")),
+                    new CapabilityRegistry());
+
+            List<WifiRegistration> syncFiltered =
+                    sync.registrationTable(filter);
+            assertEquals(1, syncFiltered.size());
+            assertEquals(
+                    "cap-17-client-a",
+                    syncFiltered.get(0).interfaceName().orElseThrow());
+
+            AsyncWifiApi async = new AsyncWifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    Runnable::run,
+                    environment("7.20.4", List.of("wifi-qcom")),
+                    new CapabilityRegistry());
+
+            List<WifiRegistration> asyncFiltered =
+                    async.registrationTable(filter).get(2, TimeUnit.SECONDS);
+            assertEquals(1, asyncFiltered.size());
+            assertEquals(
+                    "cap-17-client-a",
+                    asyncFiltered.get(0).interfaceName().orElseThrow());
+
+            assertTrue(connection.commands().stream()
+                    .noneMatch(command -> command.contains("cap-17-")));
+        }
+    }
     @Test
     void remoteCapsUseOnlyEnabledManagerSourcesAndEmptyModernDoesNotFallback() throws Exception {
         ScriptedConnection connection = new ScriptedConnection(Map.of(

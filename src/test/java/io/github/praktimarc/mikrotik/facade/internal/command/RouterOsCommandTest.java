@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.internal.command;
 
+import io.github.praktimarc.mikrotik.facade.RouterOsQuery;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,4 +55,34 @@ class RouterOsCommandTest {
         assertFalse(command.toString().contains("alice"));
         assertFalse(command.toString().contains("super-secret"));
     }
+
+    @Test
+    void advancedQuerySupportsRepeatedPropertyNamesAndCombinesWithLegacyEquality() {
+        RouterOsCommand command = RouterOsCommand.builder("/interface/print")
+                .query("type", "wifi")
+                .query(RouterOsQuery.eq("name", "cap-a")
+                        .or(RouterOsQuery.eq("name", "cap-b")))
+                .build();
+
+        assertEquals(
+                "/interface/print where type='wifi' and (name='cap-a' or name='cap-b')",
+                command.serialize());
+        assertEquals(java.util.List.of("type", "name"), command.queryPropertyNames());
+        assertEquals(
+                java.util.List.of("wifi", "cap-a", "cap-b"),
+                java.util.List.copyOf(command.queryValuesForRedaction().values()));
+    }
+
+    @Test
+    void advancedQueryDiagnosticsExposeOnlyPropertyNames() {
+        RouterOsCommand command = RouterOsCommand.builder("/interface/print")
+                .query(RouterOsQuery.eq("name", "SECRET-A")
+                        .or(RouterOsQuery.eq("name", "SECRET-B")))
+                .build();
+
+        assertTrue(command.toString().contains("queryKeys=[name]"));
+        assertFalse(command.toString().contains("SECRET-A"));
+        assertFalse(command.toString().contains("SECRET-B"));
+    }
+
 }

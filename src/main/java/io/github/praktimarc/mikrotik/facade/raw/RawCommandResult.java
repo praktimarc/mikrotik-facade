@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.raw;
 
+import io.github.praktimarc.mikrotik.facade.ClientSideFilter;
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 
@@ -37,6 +38,15 @@ public final class RawCommandResult {
      */
     public List<RouterOsRecord> records() {
         return records;
+    }
+
+    /**
+     * Applies an explicit client-side filter to the returned records.
+     *
+     * <p>This never alters or re-executes the RouterOS server query.</p>
+     */
+    public List<RouterOsRecord> records(ClientSideFilter filter) {
+        return Objects.requireNonNull(filter, "filter").apply(records);
     }
 
     /**

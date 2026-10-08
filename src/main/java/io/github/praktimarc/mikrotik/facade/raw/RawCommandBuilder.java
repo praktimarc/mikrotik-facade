@@ -1,5 +1,6 @@
 package io.github.praktimarc.mikrotik.facade.raw;
 
+import io.github.praktimarc.mikrotik.facade.RouterOsQuery;
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
@@ -55,6 +56,17 @@ public final class RawCommandBuilder {
      */
     public RawCommandBuilder query(String name, String value) {
         command.query(name, value);
+        return this;
+    }
+
+    /**
+     * Adds an advanced server-side RouterOS query expression.
+     *
+     * @param query immutable query expression
+     * @return this builder
+     */
+    public RawCommandBuilder query(RouterOsQuery query) {
+        command.query(query);
         return this;
     }
 
@@ -124,6 +136,17 @@ public final class RawCommandBuilder {
          */
         public Async query(String name, String value) {
             command.query(name, value);
+            return this;
+        }
+
+        /**
+         * Adds an advanced server-side RouterOS query expression.
+         *
+         * @param query immutable query expression
+         * @return this builder
+         */
+        public Async query(RouterOsQuery query) {
+            command.query(query);
             return this;
         }
 
