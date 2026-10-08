@@ -24,7 +24,7 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 
 ## Dependency note
 
-The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. The full facade verification remains subject to the project test suite.
+The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. A subsequent `mvn -B -U clean verify` on Windows with Java 17 passed all 244 tests and produced `mikrotik-facade-0.1.0-SNAPSHOT.jar`.
 
 
 ## Verification
@@ -39,6 +39,8 @@ Normal verification does not require RouterOS credentials:
 ```bash
 mvn clean verify
 ```
+
+GitHub Actions runs the same Maven verification on every push to `main`, on pull requests targeting `main`, and when manually dispatched. The job uses Temurin Java 17 on Ubuntu, fetches dependencies anonymously from Maven Central, and does not enable the real-router test profile.
 
 Read-only real-router integration tests are opt-in:
 

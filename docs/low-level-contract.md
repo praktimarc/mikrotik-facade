@@ -57,6 +57,6 @@ Before accepting a later low-level release:
 
 ## Verification environment
 
-The current ChatGPT execution environment has Java/Javac but no Maven installation.
-The Task-19 tests are therefore committed as executable Maven/JUnit tests, but
-`mvn clean verify` is not claimed as executed here.
+On 2026-10-08, the published low-level POM and JAR were retrieved anonymously from Maven Central into a new, empty local Maven repository in an external consumer build. After fixing facade test compilation and a callback-thread test race, an external Java 17 Windows run of `mvn -B -U clean verify` at facade commit `3e1534e9d71cdf821f7f5614780d49a75fe0a130` passed **244 tests, 0 failures, 0 errors, 0 skipped**, built the facade JAR, and reported `BUILD SUCCESS`.
+
+The standard test suite includes the low-level contract tests without RouterOS credentials. Real-router read-only integration tests remain opt-in through the `router-it` Maven profile. GitHub Actions CI uses Java 17 and runs the standard `mvn -B -U clean verify --file pom.xml` on pushes and pull requests to `main`; CI success must be confirmed separately from the recorded local test run.
