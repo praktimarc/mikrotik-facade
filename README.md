@@ -25,3 +25,28 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 ## Dependency note
 
 The current low-level baseline `3.0.8-praktimarc.4` is distributed through GitHub Releases and is not yet available from a remote Maven repository. A clean public Maven/CI build therefore requires an approved Maven distribution source for that artifact. The project does not use `systemPath` or a checked-in dependency JAR as a workaround.
+
+
+## Verification
+
+The low-level consumer contract is pinned to `mikrotik 3.0.8-praktimarc.4`
+(release commit `c170858efaac04fc78771903ef4c2bdbb6d35325`).
+The contract tests use only the public low-level API and an independent loopback RouterOS
+wire peer.
+
+Normal verification does not require RouterOS credentials:
+
+```bash
+mvn clean verify
+```
+
+Read-only real-router integration tests are opt-in:
+
+```bash
+mvn clean verify -Prouter-it
+```
+
+The `router-it` profile requires `MIKROTIK_IT_HOST`, `MIKROTIK_IT_USERNAME`,
+`MIKROTIK_IT_PASSWORD` and `MIKROTIK_IT_PROFILE`. See
+`docs/routeros-test-profiles.md` for transport options and the seven documented target
+profiles, and `docs/low-level-contract.md` for the exact low-level guarantees.

@@ -1933,16 +1933,76 @@ auftauchen.
 Die für die Facade kritischen Garantien von:
 
 ```text
-mikrotik-java 3.0.8-praktimarc.4
+io.github.praktimarc:mikrotik:3.0.8-praktimarc.4
+release commit c170858efaac04fc78771903ef4c2bdbb6d35325
 ```
 
-werden durch einen kleinen eigenen Contract-Test-Satz abgesichert.
+werden durch einen eigenen Consumer-Contract-Test-Satz abgesichert.
+
+Die Contract-Suite spricht über einen unabhängigen Loopback-Testserver das erforderliche RouterOS-Wireformat und verwendet auf Client-Seite ausschließlich öffentliche Low-Level-Typen:
+
+```text
+ApiConnection
+ResultListener
+ConnectionListener
+öffentliche Exception-Typen
+```
+
+Verboten sind in dieser Suite:
+
+```text
+Import von me.legrange.mikrotik.impl.*
+Reflection auf Low-Level-Implementierungsdetails
+Kopplung an interne Listener-/Tag-Maps
+```
+
+Vertraglich geprüft werden mindestens:
+
+```text
+mehrere gleichzeitig aktive Listener-Commands und tag-sichere Reply-Zuordnung
+generische !done-Completion-Metadaten
+terminaler !trap als command-lokaler ApiCommandException
+unerwarteter Connection Loss → ConnectionListener
+intentional close → kein ConnectionListener
+fataler Loss terminiert aktive Commands und spätere Submissions
+byte-exakter, gechunkter Binary-Download parallel zu Text-Listenern
+```
+
+Ein späteres Upgrade von `mikrotik` ist daher kein rein mechanischer Versionswechsel. Die Contract-Suite muss gegen die neue Version erfolgreich sein oder die geänderte Semantik muss explizit in der Facade-Architektur akzeptiert werden.
 
 ### Real Router Integration Tests
 
-Separat und credential-gated.
+Real-Router-Tests sind read-only, separat und credential-gated.
 
-Sie gehören nicht zu jedem normalen CI-Build.
+Der normale Maven-Lauf schließt Integrationstests ausdrücklich aus:
+
+```text
+mvn clean verify
+→ kein Router / keine Credentials erforderlich
+```
+
+Erst das explizite Profil aktiviert Failsafe:
+
+```text
+mvn clean verify -Prouter-it
+→ führt *RouterIT aus
+```
+
+Die Zielkonfiguration kommt ausschließlich aus Environment-Variablen. Wird das Profil explizit aktiviert, fehlen aber Pflichtwerte, schlägt der Test fail-fast fehl statt still zu skippen.
+
+Dokumentierte Zielprofile:
+
+```text
+ROS6_LEGACY
+ROS7_NO_WIFI
+ROS7_LEGACY_WIRELESS
+ROS7_MODERN_WIFI
+LEGACY_CAPSMAN
+MODERN_WIFI_CAPSMAN
+PARALLEL_CAPSMAN
+```
+
+Task 19 stellt zunächst einen universellen read-only Smoke-/Parallel-Read-Test bereit. Profil-spezifische Assertions werden erst ergänzt, wenn reale Zielgeräte/Fixtures für das jeweilige Profil bekannt sind.
 
 ## 46. Functional-Parity-Matrix
 

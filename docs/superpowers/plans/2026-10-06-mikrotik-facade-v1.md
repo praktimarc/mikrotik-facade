@@ -918,13 +918,13 @@ The Maven gate remains mandatory before claiming a release-ready v1 build; it is
 
 Add a focused contract suite for the assumptions made about `mikrotik-java .4`:
 
-- [ ] concurrent listener commands.
-- [ ] generic completion metadata.
-- [ ] terminal command errors.
-- [ ] ConnectionListener unexpected-loss notification.
-- [ ] intentional close does not issue connection-loss notification.
-- [ ] active command failure on connection loss.
-- [ ] binary-download contract.
+- [x] concurrent listener commands.
+- [x] generic completion metadata.
+- [x] terminal command errors.
+- [x] ConnectionListener unexpected-loss notification.
+- [x] intentional close does not issue connection-loss notification.
+- [x] active command failure on connection loss.
+- [x] binary-download contract.
 
 Real RouterOS tests remain separately enabled/credential-gated.
 
@@ -941,6 +941,19 @@ parallel CAPsMAN where available
 ```
 
 Normal public CI must not require router credentials.
+
+
+Task-19 finalization:
+
+- The exact low-level baseline is release commit `c170858efaac04fc78771903ef4c2bdbb6d35325` (`release: v3.0.8-praktimarc.4`).
+- `MikrotikJavaContractTest` exercises the public low-level API against an independent loopback RouterOS wire peer. Contract tests do not import or reflect into `me.legrange.mikrotik.impl.*`.
+- The binary contract uses a hostile 70,013-byte payload, validates byte-exact output, multi-chunk reads, filename/query preservation, safe local staging completion and coexistence with a tagged text listener.
+- Normal Surefire explicitly excludes `*IT`. The `router-it` Maven profile activates Failsafe only for `*RouterIT`.
+- `RouterReadOnlyRouterIT` is credential-gated through environment variables and fails fast when the explicit profile is enabled without valid configuration. The current integration test is read-only.
+- Seven target profiles are documented in `docs/routeros-test-profiles.md`; Task 19 does not claim that all seven real targets are currently available.
+- The consumer contract and dependency-upgrade rule are documented in `docs/low-level-contract.md`.
+
+Verification limitation in the current execution environment remains unchanged: Maven is not installed, so the committed JUnit/Maven suite cannot be claimed as executed here. No real-router test was run because no credentialed router target was supplied.
 
 ---
 
