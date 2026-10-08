@@ -3,7 +3,7 @@ package io.github.praktimarc.mikrotik.facade;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsSystemInfo;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
-import me.legrange.mikrotik.ApiConnection;
+import io.github.praktimarc.mikrotik.facade.testing.StubApiConnection;
 import me.legrange.mikrotik.MikrotikApiException;
 import me.legrange.mikrotik.ResultListener;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class InterfacesFacadeWiringTest {
         @Override public void onComplete() {}
     }
 
-    private static final class FakeConnection extends ApiConnection {
+    private static final class FakeConnection extends StubApiConnection {
         private final AtomicInteger cancels = new AtomicInteger();
         private final CountDownLatch executeEntered = new CountDownLatch(1);
 

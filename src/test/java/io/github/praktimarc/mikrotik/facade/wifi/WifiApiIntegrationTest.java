@@ -10,6 +10,7 @@ import io.github.praktimarc.mikrotik.facade.internal.capability.CapabilityRegist
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.wifi.internal.RemoteCapsSourceResolver;
+import io.github.praktimarc.mikrotik.facade.testing.StubApiConnection;
 import me.legrange.mikrotik.ApiConnection;
 import me.legrange.mikrotik.ApiConnectionException;
 import me.legrange.mikrotik.MikrotikApiException;
@@ -337,7 +338,7 @@ class WifiApiIntegrationTest {
         }
     }
 
-    private static final class ScriptedConnection extends ApiConnection {
+    private static final class ScriptedConnection extends StubApiConnection {
         private final Map<String, List<Map<String, String>>> script;
         private final List<String> commands = new ArrayList<>();
         private final AtomicInteger tags = new AtomicInteger();

@@ -3,7 +3,7 @@ package io.github.praktimarc.mikrotik.facade;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsSystemInfo;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
-import me.legrange.mikrotik.ApiConnection;
+import io.github.praktimarc.mikrotik.facade.testing.StubApiConnection;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -31,7 +31,7 @@ class DhcpFacadeWiringTest {
                 List.of());
     }
 
-    private static final class NoOpConnection extends ApiConnection {
+    private static final class NoOpConnection extends StubApiConnection {
         @Override
         public void close() {
         }

@@ -14,6 +14,8 @@ facade Java baseline: 17
 The contract suite exists because the facade relies on behavioral guarantees that are
 stronger than merely compiling against the public classes.
 
+The pinned low-level POM and JAR are publicly resolvable from Maven Central. This was verified on 2026-10-08 by an external Maven build using a new, empty local repository. The dependency does not require GitHub Packages credentials or a locally installed JAR.
+
 ## Contract covered by the facade
 
 `MikrotikJavaContractTest` uses the public `ApiConnection`, `ResultListener`,

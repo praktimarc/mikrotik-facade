@@ -24,7 +24,7 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 
 ## Dependency note
 
-The current low-level baseline `3.0.8-praktimarc.4` is distributed through GitHub Releases and is not yet available from a remote Maven repository. A clean public Maven/CI build therefore requires an approved Maven distribution source for that artifact. The project does not use `systemPath` or a checked-in dependency JAR as a workaround.
+The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. The full facade verification remains subject to the project test suite.
 
 
 ## Verification

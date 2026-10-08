@@ -3,7 +3,7 @@ package io.github.praktimarc.mikrotik.facade.interfaces;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.internal.stream.StreamRegistry;
-import me.legrange.mikrotik.ApiConnection;
+import io.github.praktimarc.mikrotik.facade.testing.StubApiConnection;
 import me.legrange.mikrotik.MikrotikApiException;
 import me.legrange.mikrotik.ResultListener;
 import org.junit.jupiter.api.Test;
@@ -81,7 +81,7 @@ class InterfaceMonitorIntegrationTest {
         @Override public void onComplete() {}
     }
 
-    private static final class FakeConnection extends ApiConnection {
+    private static final class FakeConnection extends StubApiConnection {
         private final AtomicInteger executions = new AtomicInteger();
         private final AtomicInteger cancels = new AtomicInteger();
         private ResultListener listener;
