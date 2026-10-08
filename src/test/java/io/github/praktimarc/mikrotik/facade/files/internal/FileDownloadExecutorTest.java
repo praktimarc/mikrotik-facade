@@ -19,23 +19,22 @@ class FileDownloadExecutorTest {
     @Test
     void transferRunsOnBlockingWorkerAndCompletionRunsOnCallbackExecutor() throws Exception {
         ExecutorService callback = Executors.newSingleThreadExecutor(named("callback"));
-        FileDownloadExecutor executor = new FileDownloadExecutor(callback, named("download"), 1, 2);
+        AtomicReference<String> completionThread = new AtomicReference<>();
+        FileDownloadExecutor executor = new FileDownloadExecutor(
+                task -> callback.execute(() -> {
+                    completionThread.set(Thread.currentThread().getName());
+                    task.run();
+                }),
+                named("download"), 1, 2);
         try {
             AtomicReference<String> workThread = new AtomicReference<>();
-            AtomicReference<String> completionThread = new AtomicReference<>();
-            CountDownLatch completion = new CountDownLatch(1);
 
             CompletableFuture<String> future = executor.submit(() -> {
                 workThread.set(Thread.currentThread().getName());
                 return "ok";
             });
-            future.thenRun(() -> {
-                completionThread.set(Thread.currentThread().getName());
-                completion.countDown();
-            });
 
             assertEquals("ok", future.get(2, TimeUnit.SECONDS));
-            assertTrue(completion.await(2, TimeUnit.SECONDS));
             assertTrue(workThread.get().startsWith("download"));
             assertTrue(completionThread.get().startsWith("callback"));
         } finally {
