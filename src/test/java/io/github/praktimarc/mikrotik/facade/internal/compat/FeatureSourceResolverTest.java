@@ -1,6 +1,7 @@
 package io.github.praktimarc.mikrotik.facade.internal.compat;
 
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
 import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +33,7 @@ class FeatureSourceResolverTest {
     }
 
     @Test
-    void existingUnplannedPathDoesNotBecomeAuthoritativeAutomatically() {
+    void existingUnplannedPathDoesNotBecomeAuthoritativeAutomatically() throws MikrotikDataException {
         DataSourcePlan plan = DataSourcePlan.single(
                 "wifi.registration",
                 "/caps-man/registration-table");
@@ -47,7 +48,7 @@ class FeatureSourceResolverTest {
     }
 
     @Test
-    void compositePreservesProvenanceAndNeverGenericallyDeduplicates() {
+    void compositePreservesProvenanceAndNeverGenericallyDeduplicates() throws MikrotikDataException {
         DataSourcePlan plan = DataSourcePlan.composite(
                 "wifi.registration",
                 List.of("/caps-man/registration-table", "/interface/wifi/registration-table"));
@@ -102,7 +103,7 @@ class FeatureSourceResolverTest {
     }
 
     @Test
-    void preferredFallbackUsesFallbackOnlyWhenPreferredResultSetIsUnavailable() {
+    void preferredFallbackUsesFallbackOnlyWhenPreferredResultSetIsUnavailable() throws MikrotikDataException {
         DataSourcePlan plan = DataSourcePlan.preferredFallback(
                 "wifi.registration",
                 "/interface/wifi/registration-table",
