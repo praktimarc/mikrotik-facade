@@ -32,8 +32,7 @@ jobs:
             echo "::error::Forbidden low-level internal API reference"
             exit 1
           fi
-          if git ls-files | grep -Ei '\.(jar|jks|keystore|p12|pfx|pem|key)
-; then
+          if git ls-files | grep -Ei '[.](jar|jks|keystore|p12|pfx|pem|key)'; then
             echo "::error::Tracked dependency binary or sensitive key material"
             exit 1
           fi
