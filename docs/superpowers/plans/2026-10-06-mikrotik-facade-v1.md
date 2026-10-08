@@ -47,6 +47,10 @@ docs/superpowers/specs/2026-10-06-mikrotik-facade-architecture.md
 docs/superpowers/plans/2026-10-06-mikrotik-facade-v1.md
 ```
 
+## Verification milestone (2026-10-08)
+
+The low-level dependency `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` has been publicly published and resolved from a fresh Maven repository. The facade passed `mvn -B -U clean verify` on Windows at commit `3e1534e9d71cdf821f7f5614780d49a75fe0a130` (244 tests) and [GitHub Actions run 37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) on Java 17 / Ubuntu (244 tests). Earlier per-task references to a missing Maven binary or pending Maven runs are **historical records of those task-specific environments**, not the current project status. The Task-20 documentation and Javadoc quality gate were added afterward; their latest CI outcome is tracked independently.
+
 ## Global Constraints
 
 - Java 17 for the facade.
@@ -67,7 +71,7 @@ docs/superpowers/plans/2026-10-06-mikrotik-facade-v1.md
 
 ## External prerequisite
 
-Before the facade becomes independently buildable in clean Maven CI, `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` must be resolvable from an approved Maven repository.
+**Fulfilled on 2026-10-08:** `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is now published to Maven Central and has been resolved anonymously from a fresh Maven repository. The facade is independently buildable in clean Java 17 Maven CI.
 
 Do not solve this with:
 
@@ -122,7 +126,7 @@ Steps:
 - [x] Add JUnit 5 and SLF4J API.
 - [x] Add `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` without `systemPath`.
 - [x] Add `BuildBaselineTest` checking the facade can load public low-level API classes such as `ApiConnection`, `ApiCommandException`, `ApiDataException` and `ConnectionListener`.
-- [ ] Run:
+- [x] Run (verified externally and in GitHub Actions on 2026-10-08):
 
 ```text
 mvn clean verify
@@ -953,7 +957,7 @@ Task-19 finalization:
 - Seven target profiles are documented in `docs/routeros-test-profiles.md`; Task 19 does not claim that all seven real targets are currently available.
 - The consumer contract and dependency-upgrade rule are documented in `docs/low-level-contract.md`.
 
-Verification limitation in the current execution environment remains unchanged: Maven is not installed, so the committed JUnit/Maven suite cannot be claimed as executed here. No real-router test was run because no credentialed router target was supplied.
+Historical Task-19 environment note: Maven was not available in that execution session, so that session did not execute the committed JUnit/Maven suite. Superseded by the external Windows and GitHub Actions verification recorded in the 2026-10-08 milestone above. No real-router test is claimed, because no credentialed target was supplied.
 
 ---
 
@@ -1002,6 +1006,8 @@ performance characteristics from a server-side query.
 ---
 
 # Task 20 – Public documentation and release-readiness
+
+**Implementation status (2026-10-08):** Getting-started guide and release-readiness checklist added; README and historical Maven notes updated. Normal 244-test verification was successful on Windows and in GitHub Actions. Javadoc generation plus targeted source/artifact hygiene checks were added to the CI workflow; their own success must be confirmed in the new CI run. Real-router profiles and final ISPSup caller re-scan remain explicitly separate gates. No facade tag or release created.
 
 **Files:**
 

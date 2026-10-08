@@ -4,7 +4,7 @@ High-level Java facade for the classic MikroTik RouterOS API.
 
 ## Status
 
-The project is in initial implementation. The architecture and implementation plan are tracked under `docs/superpowers/`.
+The v1 feature set is implemented and passes the Java 17 build and 244-test CI suite; the facade is still an unreleased `0.1.0-SNAPSHOT`. Release readiness and real-router integration remain separate gates. See [Getting started](docs/getting-started.md), [release readiness](docs/release-readiness.md), and the architecture/implementation plan under `docs/superpowers/`.
 
 ## Baseline
 
@@ -27,6 +27,14 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. A subsequent `mvn -B -U clean verify` on Windows with Java 17 passed all 244 tests and produced `mikrotik-facade-0.1.0-SNAPSHOT.jar`.
 
 
+## Documentation
+
+- [Getting started, examples and failure semantics](docs/getting-started.md)
+- [Release-readiness and remaining gates](docs/release-readiness.md)
+- [RouterOS compatibility catalog](docs/routeros-compatibility.md)
+- [Functional parity inventory](docs/functional-parity.md)
+- [ISPSup migration notes](docs/ispsup-migration-notes.md)
+
 ## Verification
 
 The low-level consumer contract is pinned to `mikrotik 3.0.8-praktimarc.4`
@@ -40,7 +48,7 @@ Normal verification does not require RouterOS credentials:
 mvn clean verify
 ```
 
-GitHub Actions runs the same Maven verification on every push to `main`, on pull requests targeting `main`, and when manually dispatched. The job uses Temurin Java 17 on Ubuntu, fetches dependencies anonymously from Maven Central, and does not enable the real-router test profile.
+GitHub Actions runs Maven verification **and Javadoc generation** on every push to `main`, on pull requests targeting `main`, and when manually dispatched. The job uses Temurin Java 17 on Ubuntu, fetches dependencies anonymously from Maven Central, and does not enable the real-router test profile. The baseline run [37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) passed 244 tests; the Javadoc gate was added later and must be verified on the updated workflow.
 
 Read-only real-router integration tests are opt-in:
 

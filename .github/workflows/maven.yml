@@ -25,3 +25,17 @@ jobs:
           java-version: '17'
       - name: Verify with Maven
         run: mvn -B -U clean verify --file pom.xml
+      - name: Check low-level API boundary and tracked sensitive files
+        shell: bash
+        run: |
+          if git grep -n 'me\.legrange\.mikrotik\.impl\.' -- src/main/java; then
+            echo "::error::Forbidden low-level internal API reference"
+            exit 1
+          fi
+          if git ls-files | grep -Ei '\.(jar|jks|keystore|p12|pfx|pem|key)
+; then
+            echo "::error::Tracked dependency binary or sensitive key material"
+            exit 1
+          fi
+      - name: Generate Java API documentation
+        run: mvn -B -U org.apache.maven.plugins:maven-javadoc-plugin:3.11.2:javadoc --file pom.xml
