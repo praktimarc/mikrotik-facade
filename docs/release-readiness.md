@@ -19,7 +19,7 @@ mvn -B -U clean verify
 mvn -B -U org.apache.maven.plugins:maven-javadoc-plugin:3.11.2:javadoc
 ```
 
-GitHub Actions on `main` runs both commands, checks for forbidden low-level internal-package imports in `src/main/java`, and rejects selected tracked credential/archive extensions. Keep Javadocs uncompromised: a Javadoc failure is a release gate, not an excuse to turn off doclint. The CI result for the added Javadoc step must be reviewed before calling this specific gate passed.
+GitHub Actions on `main` runs both commands, checks for forbidden low-level internal-package imports in `src/main/java`, and rejects selected tracked credential/archive extensions. The expanded [CI run 37837148351](https://github.com/praktimarc/mikrotik-facade/actions/runs/37837148351) completed successfully: 244 tests passed, the targeted hygiene check passed and Javadoc generation returned `BUILD SUCCESS`. **Documentation quality caveat:** Javadoc reported `100 warnings`, predominantly missing `@param` and `@return` tags. These are non-fatal for the present build but must not be misreported as warning-free; clean them in a separate documentation-quality pass before imposing a zero-warning release policy.
 
 This is a **targeted repository hygiene check**, not a complete security audit. The existing JUnit suite covers redacted diagnostics, query/command semantics, backpressure and failure mapping. Review environment files and arbitrary resources manually before any public release; never commit actual device credentials or private keys.
 

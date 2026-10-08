@@ -48,7 +48,7 @@ Normal verification does not require RouterOS credentials:
 mvn clean verify
 ```
 
-GitHub Actions runs Maven verification **and Javadoc generation** on every push to `main`, on pull requests targeting `main`, and when manually dispatched. The job uses Temurin Java 17 on Ubuntu, fetches dependencies anonymously from Maven Central, and does not enable the real-router test profile. The baseline run [37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) passed 244 tests; the Javadoc gate was added later and must be verified on the updated workflow.
+GitHub Actions runs Maven verification **and Javadoc generation** on every push to `main`, on pull requests targeting `main`, and when manually dispatched. The job uses Temurin Java 17 on Ubuntu, fetches dependencies anonymously from Maven Central, and does not enable the real-router test profile. The baseline run [37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) passed 244 tests. The expanded gate passed in [run 37837148351](https://github.com/praktimarc/mikrotik-facade/actions/runs/37837148351), including Javadoc generation; Javadoc still emits 100 non-fatal missing-tag warnings, tracked in release readiness.
 
 Read-only real-router integration tests are opt-in:
 

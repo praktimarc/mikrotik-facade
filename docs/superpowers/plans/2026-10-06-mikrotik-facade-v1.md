@@ -49,7 +49,7 @@ docs/superpowers/plans/2026-10-06-mikrotik-facade-v1.md
 
 ## Verification milestone (2026-10-08)
 
-The low-level dependency `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` has been publicly published and resolved from a fresh Maven repository. The facade passed `mvn -B -U clean verify` on Windows at commit `3e1534e9d71cdf821f7f5614780d49a75fe0a130` (244 tests) and [GitHub Actions run 37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) on Java 17 / Ubuntu (244 tests). Earlier per-task references to a missing Maven binary or pending Maven runs are **historical records of those task-specific environments**, not the current project status. The Task-20 documentation and Javadoc quality gate were added afterward; their latest CI outcome is tracked independently.
+The low-level dependency `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` has been publicly published and resolved from a fresh Maven repository. The facade passed `mvn -B -U clean verify` on Windows at commit `3e1534e9d71cdf821f7f5614780d49a75fe0a130` (244 tests) and [GitHub Actions run 37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) on Java 17 / Ubuntu (244 tests). Earlier per-task references to a missing Maven binary or pending Maven runs are **historical records of those task-specific environments**, not the current project status. Task-20 documentation and targeted hygiene checks passed in [CI run 37837148351](https://github.com/praktimarc/mikrotik-facade/actions/runs/37837148351), including 244 tests and successful Javadoc generation. Javadoc produced 100 non-fatal missing-tag warnings, documented as residual documentation-quality work.
 
 ## Global Constraints
 
@@ -1007,7 +1007,7 @@ performance characteristics from a server-side query.
 
 # Task 20 – Public documentation and release-readiness
 
-**Implementation status (2026-10-08):** Getting-started guide and release-readiness checklist added; README and historical Maven notes updated. Normal 244-test verification was successful on Windows and in GitHub Actions. Javadoc generation plus targeted source/artifact hygiene checks were added to the CI workflow; their own success must be confirmed in the new CI run. Real-router profiles and final ISPSup caller re-scan remain explicitly separate gates. No facade tag or release created.
+**Implementation status (2026-10-08):** Getting-started guide and release-readiness checklist added; README and historical Maven notes updated. Normal 244-test verification was successful on Windows and in GitHub Actions. Javadoc generation plus targeted source/artifact hygiene checks also passed in CI run 37837148351 (Javadoc emitted 100 non-fatal warnings, tracked separately). Real-router profiles and final ISPSup caller re-scan remain explicitly separate gates. No facade tag or release created.
 
 **Files:**
 
