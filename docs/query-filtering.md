@@ -7,6 +7,13 @@ operator. Do not emulate regex or prefix matching with lexical `>` / `<` compari
 those operators keep their real RouterOS ordering semantics and are not a reliable
 replacement for pattern matching.
 
+Some RouterOS menus accept equality query words but ignore them when selecting returned
+rows. A successful query command alone does not establish that its filter was applied.
+The typed WiFi remote-CAP lookup therefore reads the relevant tables without query
+words and matches base MACs locally, case-insensitively, before typed mapping and the
+expected-single check. Other typed operations continue to use server-side equality
+queries where supported; do not assume that they also filter locally.
+
 The facade therefore separates two concepts explicitly:
 
 ```text

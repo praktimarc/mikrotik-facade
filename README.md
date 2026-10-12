@@ -4,7 +4,7 @@ High-level Java facade for the classic MikroTik RouterOS API.
 
 ## Status
 
-The v1 feature set is implemented and passes the Java 17 build and 244-test CI suite; the facade is still an unreleased `0.1.0-SNAPSHOT`. Release readiness and real-router integration remain separate gates. See [Getting started](docs/getting-started.md), [release readiness](docs/release-readiness.md), and the architecture/implementation plan under `docs/superpowers/`.
+The v1 feature set is implemented and has passed the Java 17 CI suite; the facade is still an unreleased `0.1.0-SNAPSHOT`. Release readiness and real-router integration remain separate gates. See [Getting started](docs/getting-started.md), [release readiness](docs/release-readiness.md), and the architecture/implementation plan under `docs/superpowers/`.
 
 ## Baseline
 

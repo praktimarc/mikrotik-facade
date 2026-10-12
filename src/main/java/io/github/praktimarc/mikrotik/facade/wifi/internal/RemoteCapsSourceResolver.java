@@ -77,15 +77,15 @@ public final class RemoteCapsSourceResolver {
         return managers.isMissingManagerCommand(failure);
     }
 
-    /** Creates one remote-CAP read, optionally restricted by exact base MAC. */
-    public RouterOsOperation<List<RouterOsRecord>> remoteCapsOperation(
-            String source,
-            Optional<String> baseMac) {
+    /**
+     * Creates an unfiltered remote-CAP read.
+     *
+     * <p>Some RouterOS CAPsMAN menus do not honor equality query words. Exact base-MAC
+     * matching is therefore performed on the returned records before typed mapping.</p>
+     */
+    public RouterOsOperation<List<RouterOsRecord>> remoteCapsOperation(String source) {
         String checked = requireSource(source);
-        Objects.requireNonNull(baseMac, "baseMac");
-        RouterOsCommand.Builder builder = RouterOsCommand.builder(checked + "/print");
-        baseMac.ifPresent(value -> builder.query("base-mac", requireNonBlank(value, "baseMac")));
-        RouterOsCommand command = builder.build();
+        RouterOsCommand command = RouterOsCommand.builder(checked + "/print").build();
         return new RouterOsOperation<>() {
             @Override public String name() { return "read WiFi remote CAPs from " + checked; }
             @Override public RouterOsCommand command() { return command; }
@@ -116,15 +116,35 @@ public final class RemoteCapsSourceResolver {
         return Optional.of(DataSourcePlan.composite("wifi.remote-caps", selected));
     }
 
-    /** Maps selected raw source rows while preserving exact source provenance. */
+    /** Maps every selected raw source row while preserving exact source provenance. */
     public List<WifiRemoteCap> map(
             DataSourcePlan plan,
             Map<String, ? extends List<RouterOsRecord>> successfulResults,
             WifiRemoteCapMapper mapper) throws MikrotikDataException {
+        return map(plan, successfulResults, mapper, Optional.empty());
+    }
+
+    /**
+     * Maps selected remote CAPs, optionally matching an exact base MAC locally.
+     *
+     * <p>Filtering occurs before typed mapping and never deduplicates matching source rows.</p>
+     */
+    public List<WifiRemoteCap> map(
+            DataSourcePlan plan,
+            Map<String, ? extends List<RouterOsRecord>> successfulResults,
+            WifiRemoteCapMapper mapper,
+            Optional<String> baseMac) throws MikrotikDataException {
         Objects.requireNonNull(mapper, "mapper");
+        String requested = Objects.requireNonNull(baseMac, "baseMac")
+                .map(value -> requireNonBlank(value, "baseMac"))
+                .orElse(null);
         List<ResolvedRecord> resolved = sourceResolver.resolve(plan, successfulResults);
         ArrayList<WifiRemoteCap> result = new ArrayList<>(resolved.size());
         for (ResolvedRecord record : resolved) {
+            if (requested != null && !record.record().find("base-mac")
+                    .map(requested::equalsIgnoreCase).orElse(false)) {
+                continue;
+            }
             result.add(mapper.map(record.record(), record.source()));
         }
         return List.copyOf(result);

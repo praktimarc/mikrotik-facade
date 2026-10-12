@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -34,17 +33,16 @@ class RemoteCapsSourceResolverTest {
     }
 
     @Test
-    void remoteCapReadUsesExactBaseMacQueryAndNeverFallbackSemantics() {
+    void remoteCapReadNeverDependsOnRouterOsQueryFiltering() {
         RemoteCapsSourceResolver resolver = new RemoteCapsSourceResolver(
                 environment("7.20.4", List.of("wifi-qcom")),
                 new CapabilityRegistry());
 
-        var operation = resolver.remoteCapsOperation(
-                RemoteCapsSourceResolver.MODERN_SOURCE,
-                Optional.of("AA:BB:CC:DD:EE:FF"));
+        var operation = resolver.remoteCapsOperation(RemoteCapsSourceResolver.MODERN_SOURCE);
 
         assertEquals("/interface/wifi/capsman/remote-cap/print", operation.command().path());
-        assertEquals("AA:BB:CC:DD:EE:FF", operation.command().queries().get("base-mac"));
+        assertTrue(operation.command().queries().isEmpty());
+        assertNull(operation.command().queryExpression());
     }
 
     private static RouterOsEnvironment environment(String version, List<String> packages) {

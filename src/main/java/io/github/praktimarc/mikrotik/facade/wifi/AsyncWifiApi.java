@@ -355,11 +355,11 @@ public final class AsyncWifiApi {
                 return CompletableFuture.completedFuture(List.of());
             }
             return queryRemoteSources(
-                    plan.orElseThrow(), 0, baseMac, sourceResults, result)
+                    plan.orElseThrow(), 0, sourceResults, result)
                     .thenApply(ignored -> {
                         try {
                             return remoteCapsResolver.map(
-                                    plan.orElseThrow(), sourceResults, remoteCapMapper);
+                                    plan.orElseThrow(), sourceResults, remoteCapMapper, baseMac);
                         } catch (Exception failure) {
                             throw new CompletionException(failure);
                         }
@@ -416,7 +416,6 @@ public final class AsyncWifiApi {
     private CompletableFuture<Void> queryRemoteSources(
             DataSourcePlan plan,
             int index,
-            Optional<String> baseMac,
             Map<String, List<RouterOsRecord>> sourceResults,
             CompositeFuture<?> result) {
         if (result.isCancelled()) {
@@ -428,7 +427,7 @@ public final class AsyncWifiApi {
 
         String source = plan.sources().get(index);
         CompletableFuture<List<RouterOsRecord>> raw = engine.executeAsync(
-                remoteCapsResolver.remoteCapsOperation(source, baseMac));
+                remoteCapsResolver.remoteCapsOperation(source));
         result.track(raw);
         CompletableFuture<Void> stage = new CompletableFuture<>();
         raw.whenComplete((records, failure) -> {
@@ -438,7 +437,7 @@ public final class AsyncWifiApi {
                 return;
             }
             sourceResults.put(source, records);
-            queryRemoteSources(plan, index + 1, baseMac, sourceResults, result)
+            queryRemoteSources(plan, index + 1, sourceResults, result)
                     .whenComplete((ignored, nextFailure) -> {
                         if (nextFailure == null) {
                             stage.complete(null);

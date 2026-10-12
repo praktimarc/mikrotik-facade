@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -243,15 +244,13 @@ class WifiApiIntegrationTest {
 
     @Test
     void expectedSingleRemoteCapRejectsAmbiguousCompositeMatch() throws Exception {
-        String queryLegacy =
-                "/caps-man/remote-cap/print where base-mac='AA:BB:CC:DD:EE:FF'";
-        String queryModern =
-                "/interface/wifi/capsman/remote-cap/print where base-mac='AA:BB:CC:DD:EE:FF'";
         ScriptedConnection connection = new ScriptedConnection(Map.of(
                 "/caps-man/manager/print", rows(row("enabled", "true")),
                 "/interface/wifi/capsman/print", rows(row("enabled", "true")),
-                queryLegacy, rows(row("identity", "legacy", "base-mac", "AA:BB:CC:DD:EE:FF")),
-                queryModern, rows(row("identity", "modern", "base-mac", "AA:BB:CC:DD:EE:FF"))));
+                "/caps-man/remote-cap/print", rows(row(
+                        "identity", "legacy", "base-mac", "02:00:00:00:00:0A")),
+                "/interface/wifi/capsman/remote-cap/print", rows(row(
+                        "identity", "modern", "base-mac", "02:00:00:00:00:0A"))));
 
         try (Runtime runtime = new Runtime(connection)) {
             WifiApi api = new WifiApi(
@@ -262,7 +261,156 @@ class WifiApiIntegrationTest {
 
             assertThrows(
                     MikrotikDataException.class,
-                    () -> api.findRemoteCapByBaseMac("AA:BB:CC:DD:EE:FF"));
+                    () -> api.findRemoteCapByBaseMac("02:00:00:00:00:0a"));
+        }
+    }
+
+    @Test
+    void modernRemoteCapLookupFiltersUnrestrictedRowsBeforeTypedMapping() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/remote-cap/print", rows(
+                        row("identity", "unrelated-1", "base-mac", "02:00:00:00:00:01",
+                                "uptime", "invalid-duration"),
+                        row("identity", "synthetic-modern", "base-mac", "02:00:00:00:00:0A"),
+                        row("identity", "unrelated-2", "base-mac", "02:00:00:00:00:03"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            WifiApi api = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment("7.20.4", List.of("wifi-qcom")),
+                    new CapabilityRegistry());
+
+            WifiRemoteCap cap = api.findRemoteCapByBaseMac("02:00:00:00:00:0a").orElseThrow();
+            assertEquals("synthetic-modern", cap.identity().orElseThrow());
+            assertEquals(RemoteCapsSourceResolver.MODERN_SOURCE, cap.source());
+            assertEquals(List.of(
+                    "/interface/wifi/capsman/print",
+                    "/interface/wifi/capsman/remote-cap/print"), connection.commands());
+        }
+    }
+
+    @Test
+    void remoteCapLookupReturnsEmptyWhenUnrestrictedRowsDoNotMatch() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/remote-cap/print", rows(
+                        row("identity", "different", "base-mac", "02:00:00:00:00:01"),
+                        row("identity", "missing-base-mac"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            WifiApi api = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment("7.20.4", List.of("wifi-qcom")),
+                    new CapabilityRegistry());
+
+            assertTrue(api.findRemoteCapByBaseMac("02:00:00:00:00:0A").isEmpty());
+        }
+    }
+
+    @Test
+    void compositeRemoteCapLookupCountsOnlyActualMatches() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/caps-man/manager/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/caps-man/remote-cap/print", rows(row(
+                        "identity", "synthetic-legacy", "base-mac", "02:00:00:00:00:0A")),
+                "/interface/wifi/capsman/remote-cap/print", rows(row(
+                        "identity", "different", "base-mac", "02:00:00:00:00:0B"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            WifiApi api = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment("7.20.4", List.of("wireless")),
+                    new CapabilityRegistry());
+
+            WifiRemoteCap cap = api.findRemoteCapByBaseMac("02:00:00:00:00:0a").orElseThrow();
+            assertEquals("synthetic-legacy", cap.identity().orElseThrow());
+            assertEquals(RemoteCapsSourceResolver.LEGACY_SOURCE, cap.source());
+        }
+    }
+
+    @Test
+    void asyncRemoteCapLookupFiltersUnrestrictedRows() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/remote-cap/print", rows(
+                        row("identity", "unrelated", "base-mac", "02:00:00:00:00:01"),
+                        row("identity", "synthetic-modern", "base-mac", "02:00:00:00:00:0A"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            AsyncWifiApi api = new AsyncWifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    Runnable::run,
+                    environment("7.20.4", List.of("wifi-qcom")),
+                    new CapabilityRegistry());
+
+            WifiRemoteCap cap = api.findRemoteCapByBaseMac("02:00:00:00:00:0a")
+                    .get(2, TimeUnit.SECONDS).orElseThrow();
+            assertEquals("synthetic-modern", cap.identity().orElseThrow());
+            assertEquals(List.of(
+                    "/interface/wifi/capsman/print",
+                    "/interface/wifi/capsman/remote-cap/print"), connection.commands());
+        }
+    }
+
+    @Test
+    void asyncRemoteCapLookupRejectsTwoActualMatches() throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/interface/wifi/capsman/print", rows(row("enabled", "true")),
+                "/interface/wifi/capsman/remote-cap/print", rows(
+                        row("identity", "synthetic-a", "base-mac", "02:00:00:00:00:0A"),
+                        row("identity", "synthetic-b", "base-mac", "02:00:00:00:00:0a"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            AsyncWifiApi api = new AsyncWifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    Runnable::run,
+                    environment("7.20.4", List.of("wifi-qcom")),
+                    new CapabilityRegistry());
+
+            ExecutionException failure = assertThrows(ExecutionException.class,
+                    () -> api.findRemoteCapByBaseMac("02:00:00:00:00:0A")
+                            .get(2, TimeUnit.SECONDS));
+            assertTrue(failure.getCause() instanceof MikrotikDataException);
+        }
+    }
+
+    @Test
+    void routerOs6RemoteCapLookupUsesOnlyLegacyManagerAndTable() throws Exception {
+        assertLegacyRemoteCapLookup("6.49.17");
+    }
+
+    @Test
+    void earlyRouterOs7RemoteCapLookupUsesOnlyLegacyManagerAndTable() throws Exception {
+        assertLegacyRemoteCapLookup("7.8.2");
+    }
+
+    private static void assertLegacyRemoteCapLookup(String version) throws Exception {
+        ScriptedConnection connection = new ScriptedConnection(Map.of(
+                "/caps-man/manager/print", rows(row("enabled", "true")),
+                "/caps-man/remote-cap/print", rows(
+                        row("identity", "unrelated", "base-mac", "02:00:00:00:00:01"),
+                        row("identity", "synthetic-legacy", "base-mac", "02:00:00:00:00:0A"))));
+
+        try (Runtime runtime = new Runtime(connection)) {
+            WifiApi api = new WifiApi(
+                    runtime.engine,
+                    new SessionLifecycle(),
+                    environment(version, List.of("wireless")),
+                    new CapabilityRegistry());
+
+            WifiRemoteCap cap = api.findRemoteCapByBaseMac("02:00:00:00:00:0a").orElseThrow();
+            assertEquals("synthetic-legacy", cap.identity().orElseThrow());
+            assertEquals(RemoteCapsSourceResolver.LEGACY_SOURCE, cap.source());
+            assertEquals(List.of(
+                    "/caps-man/manager/print",
+                    "/caps-man/remote-cap/print"), connection.commands());
         }
     }
 

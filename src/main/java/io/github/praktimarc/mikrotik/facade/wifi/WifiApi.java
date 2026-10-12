@@ -233,9 +233,9 @@ public final class WifiApi {
                 new LinkedHashMap<>();
         for (String source : plan.orElseThrow().sources()) {
             results.put(source, engine.executeSync(
-                    remoteCapsResolver.remoteCapsOperation(source, baseMac)));
+                    remoteCapsResolver.remoteCapsOperation(source)));
         }
-        return remoteCapsResolver.map(plan.orElseThrow(), results, remoteCapMapper);
+        return remoteCapsResolver.map(plan.orElseThrow(), results, remoteCapMapper, baseMac);
     }
 
     private static String requireNonBlank(String value, String field) {
