@@ -42,4 +42,18 @@ class AddressListApiTest {
         assertEquals("*C",add.map(new CommandResult(List.of(),RouterOsRecord.of(Map.of("ret","*C")))).orElseThrow());
         assertThrows(MikrotikDataException.class,()->new AddressListEntryMapper().map(RouterOsRecord.of(Map.of("timeout","bad-time"))));
     }
+    @Test void listAndAddressMustBothMatchActualRouterOsFields() throws Exception {
+        var query = RouterOsProperties.builder().set("list", "allowed")
+                .set("address", "192.0.2.10").build();
+        var operation = AddressListApi.findOperation(query, new AddressListEntryMapper());
+        var found = operation.map(new CommandResult(List.of(
+                RouterOsRecord.of(Map.of("list", "allowed", "address", "192.0.2.11")),
+                RouterOsRecord.of(Map.of("list", "other", "address", "192.0.2.10")),
+                RouterOsRecord.of(Map.of("list", "ALLOWED", "address", "192.0.2.10")),
+                RouterOsRecord.of(Map.of("list", "allowed"))),
+                RouterOsRecord.empty()));
+        assertEquals(1, found.size());
+        assertEquals("192.0.2.10", found.get(0).address().orElseThrow());
+    }
+
 }

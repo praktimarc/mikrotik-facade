@@ -6,6 +6,7 @@ import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
+import io.github.praktimarc.mikrotik.facade.internal.compat.EqualityQueryVerifier;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.queue.type.internal.QueueTypeMapper;
@@ -57,7 +58,11 @@ public final class QueueTypeApi {
             @Override public RouterOsCommand command() { return command; }
             @Override public List<QueueType> map(CommandResult result) throws MikrotikFacadeException {
                 ArrayList<QueueType> mapped = new ArrayList<>(result.records().size());
-                for (RouterOsRecord record : result.records()) mapped.add(mapper.map(record));
+                for (RouterOsRecord record : result.records()) {
+                    if (EqualityQueryVerifier.matches(record, queries)) {
+                        mapped.add(mapper.map(record));
+                    }
+                }
                 return List.copyOf(mapped);
             }
         };

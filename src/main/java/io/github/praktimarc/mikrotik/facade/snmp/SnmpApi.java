@@ -94,8 +94,10 @@ public final class SnmpApi {
             @Override public Optional<SnmpCommunity> map(CommandResult result) throws MikrotikFacadeException {
                 SnmpCommunity match = null;
                 for (RouterOsRecord record : result.records()) {
+                    if (!record.find("name").map(expected::equalsIgnoreCase).orElse(false)) {
+                        continue;
+                    }
                     SnmpCommunity candidate = mapper.map(record);
-                    if (!expected.equals(candidate.name())) continue;
                     if (match != null) {
                         throw new MikrotikDataException(
                                 "Expected at most one SNMP community with the requested name");

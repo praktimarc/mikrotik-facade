@@ -1,6 +1,9 @@
 package io.github.praktimarc.mikrotik.facade.interfaces;
 
 import io.github.praktimarc.mikrotik.facade.RouterOsProperties;
+import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
+import java.util.List;
+import java.util.Map;
 import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceAddressMapper;
 import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceInfoMapper;
 import org.junit.jupiter.api.Test;

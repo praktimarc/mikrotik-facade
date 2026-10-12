@@ -11,8 +11,18 @@ Some RouterOS menus accept equality query words but ignore them when selecting r
 rows. A successful query command alone does not establish that its filter was applied.
 The typed WiFi remote-CAP lookup therefore reads the relevant tables without query
 words and matches base MACs locally, case-insensitively, before typed mapping and the
-expected-single check. Other typed operations continue to use server-side equality
-queries where supported; do not assume that they also filter locally.
+expected-single check. Other typed operations keep server-side equality queries as transfer optimizations,
+but now additionally verify every returned row locally against all supplied equality
+properties before typed mapping. Checks ignore case, accept RouterOS boolean aliases
+(`yes/no` and `true/false`), and never match absent fields. This covers DHCP lease
+lookups, firewall Filter/Mangle/Address Lists, interfaces and addresses, queue types,
+and file metadata lookups. The existing remote-CAP lookup continues to request
+unfiltered rows and match locally; SNMP community lookup also remains local.
+
+Expected-single typed operations check uniqueness after local matching. This avoids
+accidentally accepting unrelated rows, but cannot recover a valid row that a server
+query incorrectly omits. Raw API commands retain their explicit RouterOS query
+semantics without implicit post-filtering.
 
 The facade therefore separates two concepts explicitly:
 
@@ -117,6 +127,23 @@ List<RouterOsRecord> matches =
              .execute()
              .records(ClientSideFilter.regex("comment", "(?i)uplink-[0-9]+"));
 ```
+
+## Filtered DHCP lease counts
+
+Filtered `dhcpServer().countLeases(queries)` operations now request lease records and
+count only rows whose actual properties match the requested criteria. RouterOS
+`count-only` omits per-row values and cannot be verified locally. For an unfiltered
+lease count, `count-only` remains in use. Filtered counts therefore have higher
+network and memory costs, especially on menus that ignore server-side queries.
+
+## Mutation safety
+
+Typed lookups that lead to ID-based changes should use only locally validated
+records. The `removeLease(id)`, firewall rule mutation, and other ID-based methods
+still execute using the caller-supplied RouterOS `.id`; they are not atomic
+lookup-and-modify transactions. Consumers must establish the correct identity
+and uniqueness before executing destructive operations. Local post-filtering does
+not prevent changes to records between lookup and mutation.
 
 ## Long values
 

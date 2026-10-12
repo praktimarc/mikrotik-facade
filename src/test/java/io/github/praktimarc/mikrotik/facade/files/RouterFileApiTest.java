@@ -62,4 +62,21 @@ class RouterFileApiTest {
                 io.github.praktimarc.mikrotik.facade.RouterOsRecord.of(
                         Map.of("name", "bad.bin", "size", "not-a-number"))));
     }
+
+    @Test
+    void fileLookupVerifiesActualNameBeforeMappingAndUniqueness() throws Exception {
+        var operation = FileOperations.findByName("flash/synthetic.bin", new RouterFileMapper());
+        var found = operation.map(CommandResult.ofRaw(List.of(
+                Map.of("name", "flash/other.bin", "size", "invalid"),
+                Map.of("name", "FLASH/SYNTHETIC.BIN", "size", "10"),
+                Map.of("size", "999")), Map.of()));
+        assertEquals("FLASH/SYNTHETIC.BIN", found.orElseThrow().name());
+        assertEquals(10L, found.orElseThrow().sizeBytes().orElseThrow());
+
+        assertThrows(MikrotikDataException.class,
+                () -> operation.map(CommandResult.ofRaw(List.of(
+                        Map.of("name", "flash/synthetic.bin"),
+                        Map.of("name", "FLASH/SYNTHETIC.BIN")), Map.of())));
+    }
+
 }

@@ -76,4 +76,19 @@ class QueueTypeApiTest {
                         io.github.praktimarc.mikrotik.facade.RouterOsRecord.of(
                                 Map.of("name", "bad", "pcq-src-address-mask", "not-a-number"))));
     }
+
+    @Test
+    void queueTypesExcludeUnrelatedRowsAndAcceptBooleanAliases() throws Exception {
+        var operation = QueueTypeApi.findOperation(
+                RouterOsProperties.builder().set("default", "no").build(),
+                new QueueTypeMapper());
+        var types = operation.map(CommandResult.ofRaw(List.of(
+                Map.of("name", "synthetic", "kind", "pcq", "default", "FALSE"),
+                Map.of("name", "unrelated", "kind", "pcq", "default", "true",
+                        "pcq-src-address-mask", "malformed"),
+                Map.of("name", "missing-flag", "kind", "pcq")), Map.of()));
+        assertEquals(1, types.size());
+        assertEquals("synthetic", types.get(0).name());
+    }
+
 }

@@ -18,7 +18,7 @@ class FilterApiTest {
         RouterOsOperation<List<FirewallRule>> operation=FilterApi.findOperation(queries,new FirewallRuleMapper());
         assertEquals("/ip/firewall/filter/print",operation.command().path());
         assertEquals(queries.asMap(),operation.command().queries());
-        List<FirewallRule> rules=operation.map(new CommandResult(List.of(RouterOsRecord.of(Map.of(".id","*1","future","kept"))),RouterOsRecord.empty()));
+        List<FirewallRule> rules=operation.map(new CommandResult(List.of(RouterOsRecord.of(Map.of(".id","*1","chain","FORWARD","comment","example","future","kept"))),RouterOsRecord.empty()));
         assertEquals(1,rules.size());
         assertEquals("kept",rules.get(0).raw().find("future").orElseThrow());
     }
@@ -35,4 +35,18 @@ class FilterApiTest {
         assertEquals("*9",set.command().arguments().get(".id"));
         assertEquals("true",set.command().arguments().get("disabled"));
     }
+    @Test void serverQueryCannotIntroduceUnrelatedFirewallRules() throws Exception {
+        var query = RouterOsProperties.builder().set("chain", "forward").set("comment", "approved").build();
+        var operation = FilterApi.findOperation(query, new FirewallRuleMapper());
+        var rows = List.of(
+                RouterOsRecord.of(Map.of(".id", "*1", "chain", "forward", "comment", "approved")),
+                RouterOsRecord.of(Map.of(".id", "*2", "chain", "input",
+                        "comment", "approved", "bytes", "invalid")),
+                RouterOsRecord.of(Map.of(".id", "*3", "chain", "forward", "comment", "other")),
+                RouterOsRecord.of(Map.of(".id", "*4", "chain", "forward")));
+        var result = operation.map(new CommandResult(rows, RouterOsRecord.empty()));
+        assertEquals(1, result.size());
+        assertEquals("*1", result.get(0).id().orElseThrow());
+    }
+
 }

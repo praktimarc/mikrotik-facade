@@ -9,6 +9,7 @@ import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
+import io.github.praktimarc.mikrotik.facade.internal.compat.EqualityQueryVerifier;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 
@@ -130,11 +131,24 @@ public final class DhcpServerApi {
 
     static RouterOsOperation<Long> countLeasesOperation(RouterOsProperties queries) {
         Objects.requireNonNull(queries, "queries");
-        RouterOsCommand.Builder builder = RouterOsCommand.builder(LEASE_PATH).flag("count-only");
-        queries.asMap().forEach(builder::query);
-        RouterOsCommand command = builder.build();
+        if (!queries.asMap().isEmpty()) {
+            RouterOsCommand.Builder builder = RouterOsCommand.builder(LEASE_PATH);
+            queries.asMap().forEach(builder::query);
+            RouterOsCommand command = builder.build();
+            return new RouterOsOperation<>() {
+                @Override public String name() { return "count matching DHCP leases"; }
+                @Override public RouterOsCommand command() { return command; }
+                @Override public Long map(CommandResult result) {
+                    return result.records().stream()
+                            .filter(record -> EqualityQueryVerifier.matches(record, queries))
+                            .count();
+                }
+            };
+        }
+
+        RouterOsCommand command = RouterOsCommand.builder(LEASE_PATH).flag("count-only").build();
         return new RouterOsOperation<>() {
-            @Override public String name() { return "count DHCP leases"; }
+            @Override public String name() { return "count all DHCP leases"; }
             @Override public RouterOsCommand command() { return command; }
             @Override public Long map(CommandResult result) throws MikrotikFacadeException {
                 long count = result.completion().requireLong("ret");
@@ -172,15 +186,18 @@ public final class DhcpServerApi {
 
             @Override
             public Optional<DhcpLease> map(CommandResult result) throws MikrotikFacadeException {
-                int size = result.records().size();
-                if (size == 0) {
-                    return Optional.empty();
+                RouterOsRecord match = null;
+                for (RouterOsRecord record : result.records()) {
+                    if (!EqualityQueryVerifier.matches(record, java.util.Map.of(queryKey, queryValue))) {
+                        continue;
+                    }
+                    if (match != null) {
+                        throw new MikrotikDataException(
+                                "Expected at most one DHCP lease matching the requested property");
+                    }
+                    match = record;
                 }
-                if (size != 1) {
-                    throw new MikrotikDataException(
-                            "Expected at most one DHCP lease but RouterOS returned " + size + " rows");
-                }
-                return Optional.of(mapper.map(result.records().get(0)));
+                return match == null ? Optional.empty() : Optional.of(mapper.map(match));
             }
         };
     }

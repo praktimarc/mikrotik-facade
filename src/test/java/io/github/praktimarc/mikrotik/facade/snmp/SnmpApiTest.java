@@ -74,4 +74,15 @@ class SnmpApiTest {
         assertThrows(IllegalArgumentException.class, () -> SnmpApi.setCommunityPropertiesOperation(
                 "*2", RouterOsProperties.builder().set(".id", "*9").build()));
     }
+
+    @Test
+    void communityLookupMatchesCaseInsensitivelyAndIgnoresInvalidUnrelatedRows() throws Exception {
+        var operation = SnmpApi.findCommunityByNameOperation(
+                "example-community", new SnmpCommunityMapper());
+        var found = operation.map(CommandResult.ofRaw(List.of(
+                Map.of("name", "unrelated", "write-access", "invalid"),
+                Map.of("name", "EXAMPLE-COMMUNITY", ".id", "*A")), Map.of()));
+        assertEquals("*A", found.orElseThrow().id().orElseThrow());
+    }
+
 }

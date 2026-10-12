@@ -10,6 +10,7 @@ import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
 import io.github.praktimarc.mikrotik.facade.internal.compat.DataSourcePlan;
 import io.github.praktimarc.mikrotik.facade.internal.compat.FeatureSourceResolver;
+import io.github.praktimarc.mikrotik.facade.internal.compat.EqualityQueryVerifier;
 import io.github.praktimarc.mikrotik.facade.internal.compat.ResolvedRecord;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import io.github.praktimarc.mikrotik.facade.wifi.WifiRemoteCap;
@@ -138,11 +139,11 @@ public final class RemoteCapsSourceResolver {
         String requested = Objects.requireNonNull(baseMac, "baseMac")
                 .map(value -> requireNonBlank(value, "baseMac"))
                 .orElse(null);
+        Map<String, String> expected = requested == null ? Map.of() : Map.of("base-mac", requested);
         List<ResolvedRecord> resolved = sourceResolver.resolve(plan, successfulResults);
         ArrayList<WifiRemoteCap> result = new ArrayList<>(resolved.size());
         for (ResolvedRecord record : resolved) {
-            if (requested != null && !record.record().find("base-mac")
-                    .map(requested::equalsIgnoreCase).orElse(false)) {
+            if (!EqualityQueryVerifier.matches(record.record(), expected)) {
                 continue;
             }
             result.add(mapper.map(record.record(), record.source()));

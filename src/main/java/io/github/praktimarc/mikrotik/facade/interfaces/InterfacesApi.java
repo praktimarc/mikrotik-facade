@@ -10,6 +10,7 @@ import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceMonitor
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
+import io.github.praktimarc.mikrotik.facade.internal.compat.EqualityQueryVerifier;
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.internal.stream.RouterOsPublisher;
@@ -120,14 +121,14 @@ public final class InterfacesApi {
             RouterOsProperties queries,
             InterfaceInfoMapper mapper) {
         RouterOsCommand command = commandWithQueries(INTERFACE_PATH, queries);
-        return listOperation("list interfaces", command, mapper::map);
+        return listOperation("list interfaces", command, queries, mapper::map);
     }
 
     static RouterOsOperation<List<InterfaceAddress>> addressesOperation(
             RouterOsProperties queries,
             InterfaceAddressMapper mapper) {
         RouterOsCommand command = commandWithQueries(ADDRESS_PATH, queries);
-        return listOperation("list interface addresses", command, mapper::map);
+        return listOperation("list interface addresses", command, queries, mapper::map);
     }
 
     private static RouterOsCommand commandWithQueries(String path, RouterOsProperties queries) {
@@ -140,6 +141,7 @@ public final class InterfacesApi {
     private static <T> RouterOsOperation<List<T>> listOperation(
             String name,
             RouterOsCommand command,
+            RouterOsProperties queries,
             RecordMapper<T> mapper) {
         return new RouterOsOperation<>() {
             @Override
@@ -152,7 +154,9 @@ public final class InterfacesApi {
             public List<T> map(CommandResult result) throws MikrotikFacadeException {
                 ArrayList<T> mapped = new ArrayList<>(result.records().size());
                 for (RouterOsRecord record : result.records()) {
-                    mapped.add(mapper.map(record));
+                    if (EqualityQueryVerifier.matches(record, queries)) {
+                        mapped.add(mapper.map(record));
+                    }
                 }
                 return List.copyOf(mapped);
             }

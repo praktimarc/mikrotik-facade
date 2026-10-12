@@ -34,4 +34,16 @@ class MangleApiTest {
         assertEquals("false",set.command().arguments().get("disabled"));
         assertThrows(IllegalArgumentException.class,()->MangleApi.removeOperation("  "));
     }
+    @Test void ignoredServerFilterDoesNotReturnUnrelatedMangleRules() throws Exception {
+        var query = RouterOsProperties.builder().set("src-address", "192.0.2.10").build();
+        var operation = MangleApi.findOperation(query, new FirewallRuleMapper());
+        var rows = List.of(
+                RouterOsRecord.of(Map.of(".id", "*1", "src-address", "192.0.2.11")),
+                RouterOsRecord.of(Map.of(".id", "*2", "src-address", "192.0.2.10")),
+                RouterOsRecord.of(Map.of(".id", "*3", "comment", "missing-address")));
+        var result = operation.map(new CommandResult(rows, RouterOsRecord.empty()));
+        assertEquals(1, result.size());
+        assertEquals("*2", result.get(0).id().orElseThrow());
+    }
+
 }

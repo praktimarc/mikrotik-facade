@@ -44,7 +44,7 @@ The status describes the evidence available to this project. It is not a claim t
 | DHCP client ID | DHCP lease data | `/ip/dhcp-server/lease/print` | `SINGLE` + explicit schema mapping | `client-id`, `active-client-id` | `LEGACY_OBSERVED` | Old handler stored the helper key instead of the received `active-client-id`; Task 11 maps the exact received value. Unknown/new fields remain in `raw()`. | Task 11 covered: legacy lease fixture |
 | DHCP Circuit-ID / Option 82 | DHCP lease / relay-dependent | `/ip/dhcp-server/lease/print` | `SINGLE` source + schema resolution | `agent-circuit-id` / `active-agent-circuit-id`; `agent-remote-id` / `active-agent-remote-id` | `LEGACY_OBSERVED` + Task 11 fixtures | Active form wins when present. No fuzzy property-name matching and no speculative Option-82 decoding. Unknown representation yields empty typed value while `raw()` remains intact. | Task 11 covered: legacy, active-agent and unknown-agent fixtures |
 | DHCP IP pools | RouterOS IP pool configuration | `/ip/pool/print` | `SINGLE` | one pool row can contain multiple comma-separated ranges | `DOCUMENTED` + `LEGACY_OBSERVED` | Preserve one RouterOS row and expose exact range fragments; capacity and `<pool>-dhcp` naming remain consumer policy. | Task 17 covered |
-| DHCP lease count | RouterOS DHCP lease print | `/ip/dhcp-server/lease/print count-only` with equality queries | `SINGLE` | terminal `!done ret=<count>` | `DOCUMENTED` + `LEGACY_OBSERVED` | Read `ret` structurally from completion metadata; missing, malformed or negative values are data errors. | Task 17 covered |
+| DHCP lease count | RouterOS DHCP lease print | `/ip/dhcp-server/lease/print count-only` with equality queries when filtering; count-only only for unfiltered totals | `SINGLE` | terminal `!done ret=<count>` | `DOCUMENTED` + `LEGACY_OBSERVED` | Filtered counts use returned lease records and client-side equality verification. Unfiltered count-only reads `ret` structurally; missing, malformed or negative values are data errors. | Task 17 covered |
 | DHCP lease removal | RouterOS DHCP lease mutation | `/ip/dhcp-server/lease/remove .id=<id>` | `SINGLE` | exact row id | `LEGACY_OBSERVED` | Caller composes expected-single lookup then remove only when present; never send an empty id. | Task 17 covered |
 | Interface inventory | generic RouterOS interfaces | `/interface/print` | `SINGLE` | stable name plus optional id/type/MTU/L2MTU/MAC/status/comment fields | `DOCUMENTED` + `OBSERVED` | `name` is required; hardware-/driver-dependent fields may be absent; unknown properties stay in `raw()`. | Task 14 covered |
 | Interface IP addresses | RouterOS IP addressing | `/ip/address/print` | `SINGLE` | address plus optional network/interface/actual-interface/VRF/comment/status fields | `DOCUMENTED` + `LEGACY_OBSERVED` | Equality queries are generic; ISPSup `cmts-internal` meaning is not facade policy. | Task 14 covered |
@@ -88,6 +88,23 @@ Finite command diagnostics use local `session-N` / `op-N` correlation and struct
 
 Before implementing a typed module, update the relevant rows with the actual RouterOS version/package/hardware evidence, exact property variants, fallback semantics, and concrete test fixtures. If a new case is not documented or observed reliably, prefer an absent typed value plus preserved raw data over a plausible-looking guess.
 
+
+## Typed equality-query post-filtering
+
+Every typed equality-query read validates the returned raw properties locally
+before mapping, with case-insensitive comparisons and RouterOS boolean aliases
+(`yes/no` versus `true/false`). Missing fields never match. This applies even
+when RouterOS returns more rows than requested. Operations expecting a single
+record check uniqueness after matching. The raw command API is unchanged.
+
+Filtered DHCP lease counts cannot use the RouterOS-only count result because
+there are no records to validate; they read and locally count matching rows.
+Unfiltered lease counts continue to use `count-only`. Server-side equality
+queries remain in requests where supported, so the facade cannot recover rows
+omitted incorrectly by a RouterOS menu.
+
+ID-based write methods are unchanged. Client-side lookup validation does not
+guarantee the identity remains stable between read and write.
 
 ## Query semantics
 

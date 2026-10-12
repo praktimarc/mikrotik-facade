@@ -104,6 +104,8 @@ System.out.println(result.completion().asMap());
 
 Use `api.raw().execute("/system/resource/print")` when only regular records are needed. Query builders support exact equality and the explicit `RouterOsQuery` expression tree. `ClientSideFilter.regex(...)` is a clearly named, post-fetch filter, **not** a RouterOS server-side regex. Supported operators, grammar limits and examples are in [query filtering](query-filtering.md).
 
+Typed equality-based reads additionally validate returned raw property values locally (case-insensitive, with RouterOS boolean aliases), before mapping and expected-single uniqueness checks. Unfiltered raw API commands are not changed. For filtered DHCP lease counts, records are read and verified instead of relying on `count-only`; see [query filtering](query-filtering.md).
+
 Raw commands can mutate configuration: treat inputs as trusted, apply router-side permissions, and do not log command arguments or credentials. The facade's diagnostics deliberately redact sensitive values.
 
 ## Continuous interface monitoring with Flow

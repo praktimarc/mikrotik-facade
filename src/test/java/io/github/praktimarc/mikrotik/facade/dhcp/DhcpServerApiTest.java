@@ -60,7 +60,8 @@ class DhcpServerApiTest {
     @Test
     void multipleRowsWhereOneIsExpectedAreDataError() {
         CommandResult result = new CommandResult(
-                List.of(RouterOsRecord.of(Map.of()), RouterOsRecord.of(Map.of())),
+                List.of(RouterOsRecord.of(Map.of("mac-address", "AA")),
+                        RouterOsRecord.of(Map.of("mac-address", "aa"))),
                 RouterOsRecord.empty());
 
         assertThrows(
@@ -106,16 +107,18 @@ class DhcpServerApiTest {
         RouterOsOperation<Long> operation = DhcpServerApi.countLeasesOperation(
                 RouterOsProperties.builder().set("server", "customer-dhcp").build());
 
-        assertEquals(List.of("count-only"), operation.command().flags());
+        assertTrue(operation.command().flags().isEmpty());
         assertEquals("customer-dhcp", operation.command().queries().get("server"));
         assertEquals(
-                "/ip/dhcp-server/lease/print count-only where server='customer-dhcp'",
+                "/ip/dhcp-server/lease/print where server='customer-dhcp'",
                 operation.command().serialize());
         assertEquals(
-                17L,
+                2L,
                 operation.map(new CommandResult(
-                        List.of(),
-                        RouterOsRecord.of(Map.of("ret", "17")))));
+                        List.of(RouterOsRecord.of(Map.of("server", "CUSTOMER-DHCP")),
+                                RouterOsRecord.of(Map.of("server", "other")),
+                                RouterOsRecord.of(Map.of("server", "customer-dhcp"))),
+                        RouterOsRecord.empty())));
     }
 
     @Test
@@ -146,6 +149,41 @@ class DhcpServerApiTest {
                 ".id", "*A",
                 "address", "192.0.2.10")));
         assertEquals("*A", lease.id().orElseThrow());
+    }
+
+    @Test
+    void leaseLookupsVerifyActualPropertiesBeforeReturningId() throws Exception {
+        var operation = DhcpServerApi.findByAddressOperation("192.0.2.10", mapper);
+        var record = operation.map(new CommandResult(List.of(
+                RouterOsRecord.of(Map.of(".id", "*1", "address", "192.0.2.11",
+                        "expires-after", "bad-time")),
+                RouterOsRecord.of(Map.of(".id", "*2", "address", "192.0.2.10")),
+                RouterOsRecord.of(Map.of(".id", "*3", "mac-address", "02:00:00:00:00:01"))),
+                RouterOsRecord.empty()));
+        assertEquals("*2", record.orElseThrow().id().orElseThrow());
+    }
+
+    @Test
+    void macLookupMatchesCaseInsensitivelyAndCountsOnlyMatchingRows() throws Exception {
+        var operation = DhcpServerApi.findByMacOperation("02:00:00:00:00:0A", mapper);
+        var one = operation.map(new CommandResult(List.of(
+                RouterOsRecord.of(Map.of(".id", "*1", "mac-address", "02:00:00:00:00:0a")),
+                RouterOsRecord.of(Map.of(".id", "*2", "mac-address", "02:00:00:00:00:0B"))),
+                RouterOsRecord.empty()));
+        assertEquals("*1", one.orElseThrow().id().orElseThrow());
+
+        assertThrows(MikrotikDataException.class, () -> operation.map(new CommandResult(List.of(
+                RouterOsRecord.of(Map.of(".id", "*1", "mac-address", "02:00:00:00:00:0A")),
+                RouterOsRecord.of(Map.of(".id", "*3", "mac-address", "02:00:00:00:00:0a"))),
+                RouterOsRecord.empty())));
+    }
+
+    @Test
+    void unfilteredLeaseCountStillUsesCountOnly() throws Exception {
+        var operation = DhcpServerApi.countLeasesOperation(RouterOsProperties.builder().build());
+        assertEquals(List.of("count-only"), operation.command().flags());
+        assertEquals(3L, operation.map(new CommandResult(
+                List.of(), RouterOsRecord.of(Map.of("ret", "3")))));
     }
 
 }
