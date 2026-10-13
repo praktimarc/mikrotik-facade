@@ -66,7 +66,7 @@ public class Example {
                 .connect()) {
 
             System.out.println("RouterOS " + api.environment().systemInfo().version());
-            api.dhcpServer().findLeaseByAddress("192.0.2.10")
+            api.ip().dhcpServer().lease().findByAddress("192.0.2.10")
                     .ifPresent(lease -> System.out.println(
                             "Lease ID: " + lease.id().orElse("(missing)")));
         }
@@ -86,6 +86,7 @@ production-specific values are included.
 - [Release-readiness and remaining gates](docs/release-readiness.md)
 - [RouterOS compatibility catalog](docs/routeros-compatibility.md)
 - [Architecture and execution model](docs/architecture.md)
+- [Snapshot API migration: RouterOS menu hierarchy](docs/api-migration-menu-hierarchy.md)
 - [Low-level API contract](docs/low-level-contract.md)
 
 ## Verification

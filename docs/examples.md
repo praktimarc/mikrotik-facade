@@ -59,7 +59,7 @@ public final class ExampleApp {
 
             System.out.println(
                     "RouterOS " + api.environment().systemInfo().version());
-            api.dhcpServer().findLeaseByAddress("192.0.2.10")
+            api.ip().dhcpServer().lease().findByAddress("192.0.2.10")
                     .ifPresent(lease -> System.out.println(
                             "Example lease: " + lease.address().orElse("(missing)")));
         }
@@ -67,18 +67,18 @@ public final class ExampleApp {
 }
 ~~~
 
-The rest of this page assumes `api` is an already-connected `MikrotikRtrApi`
-inside the `try` block. Paste individual snippets there and let your IDE add
-imports for the referenced API classes. The facade is organized as
-`api.dhcpServer()`, `api.firewall()`, `api.wifi()`, `api.interfaces()`,
-`api.queue()`, `api.snmp()`, `api.files()`, `api.system()`, and `api.raw()`.
+The rest of this page assumes `api` is already connected and is used inside the `try` block. Paste individual snippets there and let your IDE add
+imports for the referenced API classes. The available entry points are `api.ip()` (IPv4 addresses, pools, DHCP and firewall),
+`api.interfaces()`, `api.wifi()`, `api.queue()`, `api.snmp()`,
+`api.file()`, `api.ping(request)` and `api.raw()`.
+Asynchronous calls use the same hierarchy under `api.async()`.
 
 ## 3. Find and count DHCP leases (read-only)
 
 ~~~java
 // Find by exact configured lease address or MAC.
-var byAddress = api.dhcpServer().findLeaseByAddress("192.0.2.10");
-var byMac = api.dhcpServer().findLeaseByMac("02:00:00:00:00:01");
+var byAddress = api.ip().dhcpServer().lease().findByAddress("192.0.2.10");
+var byMac = api.ip().dhcpServer().lease().findByMac("02:00:00:00:00:01");
 
 byAddress.ifPresent(lease -> {
     System.out.println("ID: " + lease.id().orElse("(missing)"));
@@ -94,13 +94,13 @@ if (byMac.isEmpty()) {
 
 // Count all leases efficiently using RouterOS count-only.
 var noFilters = RouterOsProperties.builder().build();
-long total = api.dhcpServer().countLeases(noFilters);
+long total = api.ip().dhcpServer().lease().count(noFilters);
 
 // With a filter, the facade validates real returned properties before counting.
 var serverFilter = RouterOsProperties.builder()
         .set("server", "example-dhcp")
         .build();
-long onServer = api.dhcpServer().countLeases(serverFilter);
+long onServer = api.ip().dhcpServer().lease().count(serverFilter);
 
 System.out.println("Total: " + total + ", example server: " + onServer);
 ~~~
@@ -145,17 +145,17 @@ var criteria = RouterOsProperties.builder()
         .set("comment", "example-rule")
         .build();
 
-var filterRules = api.firewall().filter().find(criteria);
+var filterRules = api.ip().firewall().filter().find(criteria);
 for (var rule : filterRules) {
     System.out.println("Filter ID: " + rule.id().orElse("(missing)"));
 }
 
 var mangleRules =
-        api.firewall().mangle().findBySourceAddress("192.0.2.0/24");
+        api.ip().firewall().mangle().findBySourceAddress("192.0.2.0/24");
 System.out.println("Matching Mangle rules: " + mangleRules.size());
 
 var addressListEntries =
-        api.firewall().addressList().findByListAndAddress(
+        api.ip().firewall().addressList().findByListAndAddress(
                 "example-list", "192.0.2.10");
 System.out.println("Matching address-list entries: " + addressListEntries.size());
 ~~~
@@ -171,7 +171,7 @@ returned router configuration.
 api.interfaces().list().forEach(iface ->
         System.out.println("Interface: " + iface.name()));
 
-var addresses = api.interfaces().addresses(
+var addresses = api.ip().address().list(
         RouterOsProperties.builder()
                 .set("interface", "ether1")
                 .build());
@@ -190,7 +190,7 @@ nonDefaultTypes.forEach(type ->
 ## 7. Read SNMP communities without exposing secrets
 
 ~~~java
-api.snmp().findCommunityByName("example-community")
+api.snmp().community().findByName("example-community")
         .ifPresent(community ->
                 System.out.println("Found community ID: "
                         + community.id().orElse("(missing)")));
@@ -202,12 +202,12 @@ not print `raw()`, passwords, communities, or full configuration data to shared 
 ## 8. List and download a RouterOS file
 
 ~~~java
-api.files().findByName("flash/example.txt")
+api.file().findByName("flash/example.txt")
         .ifPresent(file -> System.out.println(
                 file.name() + " size=" + file.sizeBytes()));
 
 // A download writes a file on the local computer: pick an intentional path.
-var download = api.async().files().download(
+var download = api.async().file().download(
         "flash/example.txt",
         java.nio.file.Path.of("example.txt"));
 var downloaded = download.get(30, java.util.concurrent.TimeUnit.SECONDS);
@@ -221,13 +221,13 @@ best-effort, not guaranteed.
 ## 9. Ping from the router (read-only)
 
 ~~~java
-var result = api.system().ping(new PingRequest("192.0.2.1", 3));
+var result = api.ping(new PingRequest("192.0.2.1", 3));
 System.out.println("Sent: " + result.sent());
 System.out.println("Received: " + result.received());
 System.out.println("Loss: " + result.packetLossPercent() + "%");
 ~~~
 
-Import `io.github.praktimarc.mikrotik.facade.system.PingRequest`. `192.0.2.1`
+Import `io.github.praktimarc.mikrotik.facade.ping.PingRequest`. `192.0.2.1`
 is a documentation-only IP address; use an appropriate test target to get
 meaningful ping responses.
 
@@ -260,8 +260,8 @@ configuration, so use only trusted commands and inputs.
 ## 11. Asynchronous read (read-only)
 
 ~~~java
-var future = api.async().dhcpServer()
-        .findLeaseByAddress("192.0.2.10");
+var future = api.async().ip().dhcpServer().lease()
+        .findByAddress("192.0.2.10");
 
 var lease = future.get(10, java.util.concurrent.TimeUnit.SECONDS);
 System.out.println(lease.isPresent() ? "Found" : "Not found");
@@ -282,7 +282,7 @@ String targetIp = "192.0.2.10";
 String targetMac = "02:00:00:00:00:01";
 boolean approved = false; // Replace with an explicit authorization decision.
 
-var candidate = api.dhcpServer().findLeaseByAddress(targetIp);
+var candidate = api.ip().dhcpServer().lease().findByAddress(targetIp);
 if (approved && candidate.isPresent()) {
     var lease = candidate.orElseThrow();
     boolean identityMatches =
@@ -291,7 +291,7 @@ if (approved && candidate.isPresent()) {
                     .map(targetMac::equalsIgnoreCase).orElse(false);
     if (identityMatches) {
         String routerOsId = lease.id().orElseThrow();
-        api.dhcpServer().removeLease(routerOsId);
+        api.ip().dhcpServer().lease().remove(routerOsId);
     }
 }
 ~~~

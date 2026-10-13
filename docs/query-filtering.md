@@ -130,7 +130,7 @@ List<RouterOsRecord> matches =
 
 ## Filtered DHCP lease counts
 
-Filtered `dhcpServer().countLeases(queries)` operations now request lease records and
+Filtered `ip().dhcpServer().lease().count(queries)` operations now request lease records and
 count only rows whose actual properties match the requested criteria. RouterOS
 `count-only` omits per-row values and cannot be verified locally. For an unfiltered
 lease count, `count-only` remains in use. Filtered counts therefore have higher
@@ -139,7 +139,7 @@ network and memory costs, especially on menus that ignore server-side queries.
 ## Mutation safety
 
 Typed lookups that lead to ID-based changes should use only locally validated
-records. The `removeLease(id)`, firewall rule mutation, and other ID-based methods
+records. The `ip().dhcpServer().lease().remove(id)`, firewall rule mutation, and other ID-based methods
 still execute using the caller-supplied RouterOS `.id`; they are not atomic
 lookup-and-modify transactions. Consumers must establish the correct identity
 and uniqueness before executing destructive operations. Local post-filtering does
