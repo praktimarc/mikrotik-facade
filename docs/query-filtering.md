@@ -147,8 +147,8 @@ not prevent changes to records between lookup and mutation.
 
 ## Long values
 
-Client-side filtering operates on complete `RouterOsRecord` strings. Task 19a extends
-the low-level contract suite with a text property larger than 60 kB and verifies exact
+Client-side filtering operates on complete `RouterOsRecord` strings. The
+low-level contract suite includes a text property larger than 60 kB and verifies exact
 round-trip length/content, specifically guarding against the historical concern that
 large API words might be truncated before regex evaluation.
 

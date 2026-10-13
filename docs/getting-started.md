@@ -182,4 +182,4 @@ All checked facade failures derive from `MikrotikFacadeException`, including:
 
 A normal `close()` moves the session toward `CLOSED` and prevents new operations. Unexpected fatal connection loss instead marks it `BROKEN` and terminates active operations; there is no automatic session recovery. Create a fresh facade session after a broken connection. Successful empty results must not be confused with unsupported paths.
 
-See the [RouterOS compatibility catalog](routeros-compatibility.md), [seven real-device test profiles](routeros-test-profiles.md), [functional parity inventory](functional-parity.md), and [release readiness](release-readiness.md). Real-router tests are **opt-in** via `mvn clean verify -Prouter-it` and require documented environment configuration. The normal CI suite runs without RouterOS credentials.
+See the [RouterOS compatibility catalog](routeros-compatibility.md), [seven real-device test profiles](routeros-test-profiles.md), [release readiness](release-readiness.md). Real-router tests are **opt-in** via `mvn clean verify -Prouter-it` and require documented environment configuration. The normal CI suite runs without RouterOS credentials.

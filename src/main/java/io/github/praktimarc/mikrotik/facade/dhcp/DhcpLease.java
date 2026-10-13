@@ -10,8 +10,8 @@ import java.util.Optional;
 /**
  * Immutable typed view of a RouterOS DHCP server lease.
  *
- * <p>The typed surface mirrors the fields used by the legacy ISPSup DHCP lease DTO.
- * Unknown or newer RouterOS properties remain available through {@link #raw()}.</p>
+ * <p>Exposes common configured, active and relay-specific lease properties as typed
+ * values. Unknown or newer RouterOS properties remain available through {@link #raw()}.</p>
  */
 public final class DhcpLease implements RouterOsEntity {
 

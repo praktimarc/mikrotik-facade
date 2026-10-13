@@ -10,7 +10,6 @@ This document distinguishes **verified build/distribution evidence** from **rema
 | Facade Java 17 build | At facade commit `3e1534e9d71cdf821f7f5614780d49a75fe0a130`, `mvn -B -U clean verify` on Windows built the facade JAR and ran **244 tests, 0 failures, 0 errors, 0 skipped**. |
 | CI baseline | GitHub Actions [run 37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) succeeded under Ubuntu / Temurin 17 with the same 244 tests. |
 | Dependency integrity | Consumer `pom.xml` pins the exact low-level version, without extra Maven repositories or `systemPath`. |
-| Intentional parity | The legacy-handler parity matrix uses the terminal statuses `IMPLEMENTED`, `ACCEPTED_RAW_FALLBACK` and `INTENTIONALLY_OBSOLETE` for the actual method rows (not a promise of current ISPSup caller migration). |
 
 ## Automated gates
 
@@ -26,9 +25,8 @@ This is a **targeted repository hygiene check**, not a complete security audit. 
 ## Open before a first facade release
 
 1. **Real RouterOS integration:** Seven target profiles are documented in [routeros-test-profiles.md](routeros-test-profiles.md). Read-only tests are optional/credential-gated, and a passing mock/loopback suite must not be represented as coverage of all real devices, RouterOS versions or wireless stacks.
-2. **Current ISPSup caller inventory:** The parity matrix was prepared from supplied September 2026 handler/DTO snapshots. Confirm real callers in the then-current ISPSup sources before the final migration handoff; this is a **consumer-migration gate**, not a missing low-level dependency.
-3. **Release policy:** Decide version, supported RouterOS matrix, public API stability, licensing/attribution, artifacts, release notes and maintenance expectations. `0.1.0-SNAPSHOT` is a development baseline, not a released coordinate.
-4. **Manual approvals:** Tag creation, GitHub Release, Maven Central upload and irreversible publication each require explicit separate approval.
+2. **Release policy:** Decide version, supported RouterOS matrix, public API stability, licensing/attribution, artifacts, release notes and maintenance expectations. `0.1.0-SNAPSHOT` is a development baseline, not a released coordinate.
+3. **Manual approvals:** Tag creation, GitHub Release, Maven Central upload and irreversible publication each require explicit separate approval.
 
 ## Deliberate v1 exclusions
 
@@ -36,8 +34,8 @@ This is a **targeted repository hygiene check**, not a complete security audit. 
 - No server-side regex simulation via lexicographic queries; presence-query words `?name` / `?-name` need a future public low-level parser capability.
 - No binary upload API; the existing low-level binary download's cancellation cannot promise remote cancellation.
 
-For migration semantics and source evidence, see [functional-parity.md](functional-parity.md) and [ispsup-migration-notes.md](ispsup-migration-notes.md). For the exact low-level contract, see [low-level-contract.md](low-level-contract.md).
+For the execution design, see [architecture.md](architecture.md), for RouterOS behavior see [routeros-compatibility.md](routeros-compatibility.md), and for the exact low-level contract see [low-level-contract.md](low-level-contract.md).
 
-## Legacy-data sanitization (2026-10-08)
+## Public example data and history
 
-The public facade fixtures were rewritten with synthetic DHCP/WiFi/router examples. Historic application-specific address-list names, Mangle comments, site-device identifiers and CMTS markers in the public architectural/migration documents were replaced by semantic placeholders. SNMP tests use `example-community` and deliberately fake credential values; this is not evidence that a real credential was compromised. The GitHub Actions build includes a pinned Gitleaks action to check incoming Git commits and a second Gitleaks pass over the entire current working tree. The scan explicitly does not assert that historic commits have been erased or that every configuration detail is a recognizable secret. **The scan supplements, but does not replace, manual review** and cannot guarantee a repository is free of confidential architecture or values embedded in Git history.
+Public tests and documentation use synthetic RouterOS devices, addresses and credentials. GitHub Actions runs Gitleaks against incoming commits and the current checkout. These automated checks supplement manual review; they cannot demonstrate that historic commits contain no confidential context. Removing files from the current branch does not erase them from Git history.

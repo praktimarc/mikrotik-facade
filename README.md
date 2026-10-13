@@ -4,7 +4,7 @@ High-level Java facade for the classic MikroTik RouterOS API.
 
 ## Status
 
-The v1 feature set is implemented and has passed the Java 17 CI suite; the facade is still an unreleased `0.1.0-SNAPSHOT`. Release readiness and real-router integration remain separate gates. See [Getting started](docs/getting-started.md), [release readiness](docs/release-readiness.md), and the architecture/implementation plan under `docs/superpowers/`.
+The v1 feature set is implemented and has passed the Java 17 CI suite; the facade is still an unreleased `0.1.0-SNAPSHOT`. Release readiness and real-router integration remain separate gates. See [Getting started](docs/getting-started.md), [architecture](docs/architecture.md), and [release readiness](docs/release-readiness.md).
 
 ## Baseline
 
@@ -16,7 +16,7 @@ The v1 feature set is implemented and has passed the Java 17 CI suite; the facad
 
 ## Scope
 
-The facade provides a typed, CLI-oriented API with raw access, shared synchronous/asynchronous execution, Flow-based streaming, RouterOS capability/source/schema compatibility handling, and no dependency on ISPSup/GWT DTOs.
+The facade provides a typed, CLI-oriented API with raw access, shared synchronous/asynchronous execution, Flow-based streaming, RouterOS capability/source/schema compatibility handling, with no dependencies on an application's business models.
 
 RouterOS REST is not part of v1.
 
@@ -24,7 +24,7 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 
 ## Dependency note
 
-The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. A subsequent `mvn -B -U clean verify` on Windows with Java 17 passed all 244 tests and produced `mikrotik-facade-0.1.0-SNAPSHOT.jar`.
+The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. A subsequent `mvn -B -U clean verify` on Windows with Java 17 successfully built `mikrotik-facade-0.1.0-SNAPSHOT.jar`.
 
 
 ## Quick start
@@ -85,8 +85,8 @@ production-specific values are included.
 - [Practical Java examples and common workflows](docs/examples.md)
 - [Release-readiness and remaining gates](docs/release-readiness.md)
 - [RouterOS compatibility catalog](docs/routeros-compatibility.md)
-- [Functional parity inventory](docs/functional-parity.md)
-- [ISPSup migration notes](docs/ispsup-migration-notes.md)
+- [Architecture and execution model](docs/architecture.md)
+- [Low-level API contract](docs/low-level-contract.md)
 
 ## Verification
 
@@ -101,7 +101,7 @@ Normal verification does not require RouterOS credentials:
 mvn clean verify
 ```
 
-GitHub Actions runs Maven verification **and Javadoc generation** on every push to `main`, on pull requests targeting `main`, and when manually dispatched. The job uses Temurin Java 17 on Ubuntu, fetches dependencies anonymously from Maven Central, and does not enable the real-router test profile. The baseline run [37836340839](https://github.com/praktimarc/mikrotik-facade/actions/runs/37836340839) passed 244 tests. The expanded gate passed in [run 37837148351](https://github.com/praktimarc/mikrotik-facade/actions/runs/37837148351), including Javadoc generation; Javadoc still emits 100 non-fatal missing-tag warnings, tracked in release readiness.
+GitHub Actions runs Maven verification **and Javadoc generation** on every push to `main`, on pull requests targeting `main`, and when manually dispatched. The job uses Temurin Java 17 on Ubuntu, fetches dependencies anonymously from Maven Central, and does not enable the real-router test profile. The [documentation build and security checks](https://github.com/praktimarc/mikrotik-facade/actions/runs/38377906737) passed on Java 17. The release-readiness checklist records the outstanding publication and real-router verification gates.
 
 Read-only real-router integration tests are opt-in:
 

@@ -51,7 +51,7 @@ environment where lack of server authentication is explicitly accepted.
 No credential value belongs in source files, Maven properties, checked-in resource files,
 test names or diagnostic `toString()` output.
 
-## Current Task-19 real-router test
+## Current read-only real-router test
 
 `RouterReadOnlyRouterIT` performs only read operations:
 
@@ -66,8 +66,8 @@ It does not create, change or remove RouterOS configuration.
 
 ## Profile matrix
 
-The profile name documents what kind of target is being exercised. Task 19 does not
-claim that all seven physical/virtual targets are already available.
+The profile name documents what kind of target is being exercised. The profile matrix
+does not claim that all seven physical or virtual targets are already available.
 
 | Profile | Intended target characteristics | Primary later profile-specific coverage |
 | --- | --- | --- |
