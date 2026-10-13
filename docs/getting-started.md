@@ -2,6 +2,8 @@
 
 `mikrotik-facade` is a Java 17 library for the classic MikroTik RouterOS binary API. It is a higher-level consumer of `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4`, not an HTTP/REST client.
 
+For more copyable examples across the typed modules, see the [practical Java cookbook](examples.md). The examples use documentation-only IP addresses, synthetic MACs, and environment-provided credentials.
+
 ## Requirements
 
 - JDK 17 or newer and Maven.
@@ -180,4 +182,4 @@ All checked facade failures derive from `MikrotikFacadeException`, including:
 
 A normal `close()` moves the session toward `CLOSED` and prevents new operations. Unexpected fatal connection loss instead marks it `BROKEN` and terminates active operations; there is no automatic session recovery. Create a fresh facade session after a broken connection. Successful empty results must not be confused with unsupported paths.
 
-See the [RouterOS compatibility catalog](routeros-compatibility.md), [seven real-device test profiles](routeros-test-profiles.md), [functional parity inventory](functional-parity.md), and [release readiness](release-readiness.md). Real-router tests are **opt-in** via `mvn clean verify -Prouter-it` and require documented environment configuration. The normal 244-test CI suite runs without RouterOS credentials.
+See the [RouterOS compatibility catalog](routeros-compatibility.md), [seven real-device test profiles](routeros-test-profiles.md), [functional parity inventory](functional-parity.md), and [release readiness](release-readiness.md). Real-router tests are **opt-in** via `mvn clean verify -Prouter-it` and require documented environment configuration. The normal CI suite runs without RouterOS credentials.

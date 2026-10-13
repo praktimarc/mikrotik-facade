@@ -27,9 +27,62 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. A subsequent `mvn -B -U clean verify` on Windows with Java 17 passed all 244 tests and produced `mikrotik-facade-0.1.0-SNAPSHOT.jar`.
 
 
+## Quick start
+
+This is a Java 17 library for the **classic RouterOS binary API**, not REST.
+The facade is currently a locally built `0.1.0-SNAPSHOT` and is **not yet
+published to Maven Central**. Clone this repository and run:
+
+~~~bash
+mvn -B -U clean install
+~~~
+
+Then add it to the consumer application's `pom.xml`:
+
+~~~xml
+<dependency>
+    <groupId>io.github.praktimarc</groupId>
+    <artifactId>mikrotik-facade</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+</dependency>
+~~~
+
+The following Java example connects using verified TLS and credentials from
+environment variables. `192.0.2.10` is a **documentation-only address**; substitute
+values from your own test environment.
+
+~~~java
+import io.github.praktimarc.mikrotik.facade.MikrotikRtrApi;
+import io.github.praktimarc.mikrotik.facade.transport.ApiTransport;
+
+public class Example {
+    public static void main(String[] args) throws Exception {
+        try (MikrotikRtrApi api = MikrotikRtrApi.builder()
+                .host(System.getenv("ROUTEROS_HOST"))
+                .credentials(
+                        System.getenv("ROUTEROS_USERNAME"),
+                        System.getenv("ROUTEROS_PASSWORD"))
+                .transport(ApiTransport.tlsVerified())
+                .connect()) {
+
+            System.out.println("RouterOS " + api.environment().systemInfo().version());
+            api.dhcpServer().findLeaseByAddress("192.0.2.10")
+                    .ifPresent(lease -> System.out.println(
+                            "Lease ID: " + lease.id().orElse("(missing)")));
+        }
+    }
+}
+~~~
+
+**Next:** [Practical examples / Java cookbook](docs/examples.md) covers DHCP, firewall
+Filter/Mangle/Address Lists, WiFi/CAPsMAN, interfaces, queues, SNMP, files, ping,
+raw queries, async calls and guarded ID-based deletion. No live credentials or
+production-specific values are included.
+
 ## Documentation
 
 - [Getting started, examples and failure semantics](docs/getting-started.md)
+- [Practical Java examples and common workflows](docs/examples.md)
 - [Release-readiness and remaining gates](docs/release-readiness.md)
 - [RouterOS compatibility catalog](docs/routeros-compatibility.md)
 - [Functional parity inventory](docs/functional-parity.md)
