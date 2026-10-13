@@ -1,6 +1,7 @@
 package io.github.praktimarc.mikrotik.facade.interfaces.internal;
 
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
+import io.github.praktimarc.mikrotik.facade.ip.address.internal.IpAddressV4Mapper;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
 import org.junit.jupiter.api.Test;
 
@@ -42,14 +43,14 @@ class InterfaceMappersTest {
 
     @Test
     void addressMapperSupportsParityCommentLookupWithoutEmbeddingCmtsPolicy() throws Exception {
-        var mapped = new InterfaceAddressMapper().map(RouterOsRecord.of(Map.of(
+        var mapped = new IpAddressV4Mapper().map(RouterOsRecord.of(Map.of(
                 "address", "192.0.2.5/30",
                 "network", "192.0.2.4",
                 "interface", "vlan123",
-                "comment", "cmts-internal",
+                "comment", "test-marker",
                 "dynamic", "no")));
         assertEquals("192.0.2.5/30", mapped.address());
-        assertEquals("cmts-internal", mapped.comment().orElseThrow());
+        assertEquals("test-marker", mapped.comment().orElseThrow());
         assertFalse(mapped.dynamic().orElseThrow());
     }
 

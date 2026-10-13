@@ -25,7 +25,7 @@ To consume a local checkout from another Maven project, first use `mvn install` 
 
 ```java
 import io.github.praktimarc.mikrotik.facade.MikrotikRtrApi;
-import io.github.praktimarc.mikrotik.facade.dhcp.DhcpLease;
+import io.github.praktimarc.mikrotik.facade.ip.dhcpserver.lease.DhcpLease;
 import io.github.praktimarc.mikrotik.facade.transport.ApiTransport;
 import java.time.Duration;
 import java.util.Optional;
@@ -46,7 +46,7 @@ public class RouterExample {
 
             System.out.println(api.environment().systemInfo());
             Optional<DhcpLease> lease =
-                    api.dhcpServer().findLeaseByMac("AA:BB:CC:DD:EE:FF");
+                    api.ip().dhcpServer().lease().findByMac("AA:BB:CC:DD:EE:FF");
             lease.ifPresent(value ->
                     System.out.println(value.address().orElse("<no address>")));
         }
@@ -74,12 +74,12 @@ The `async()` tree mirrors the typed API and uses `CompletableFuture`:
 
 ```java
 import io.github.praktimarc.mikrotik.facade.MikrotikRtrApi;
-import io.github.praktimarc.mikrotik.facade.dhcp.DhcpLease;
+import io.github.praktimarc.mikrotik.facade.ip.dhcpserver.lease.DhcpLease;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 CompletableFuture<Optional<DhcpLease>> request =
-        api.async().dhcpServer().findLeaseByMac("AA:BB:CC:DD:EE:FF");
+        api.async().ip().dhcpServer().lease().findByMac("AA:BB:CC:DD:EE:FF");
 request.thenAccept(lease ->
         lease.ifPresent(value -> System.out.println(value.address())));
 ```
@@ -152,15 +152,15 @@ Keep a reference to the subscription when monitoring must be stopped explicitly,
 
 ## Files and cancellation
 
-`api.files().findByName(name)` checks an exact RouterOS filename. Binary downloads use the async API `api.async().files().download(remoteFile, localPath)`, which first checks for the file and then delegates to the pinned low-level binary-safe implementation:
+`api.file().findByName(name)` checks an exact RouterOS filename. Binary downloads use the async API `api.async().file().download(remoteFile, localPath)`, which first checks for the file and then delegates to the pinned low-level binary-safe implementation:
 
 ```java
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
-import io.github.praktimarc.mikrotik.facade.files.FileDownloadResult;
+import io.github.praktimarc.mikrotik.facade.file.FileDownloadResult;
 
 CompletableFuture<FileDownloadResult> download =
-        api.async().files().download(
+        api.async().file().download(
                 "flash/example.bin",
                 Path.of("example.bin"));
 ```

@@ -24,18 +24,20 @@ The root exposes both a typed API tree and a raw escape hatch:
 
 | Public module | Responsibility |
 | --- | --- |
-| `dhcpServer()` | Lease lookup/count/removal and IP pools |
-| `firewall().filter()` | Filter-rule reads and supported mutations |
-| `firewall().mangle()` | Mangle reads and supported mutations |
-| `firewall().addressList()` | Address-list membership and adding entries |
+| `ip().address()` | IPv4 assignments (`/ip/address`) |
+| `ip().pool()` | IP pools independent of DHCP (`/ip/pool`) |
+| `ip().dhcpServer().lease()` | DHCP leases (`/ip/dhcp-server/lease`) |
+| `ip().firewall().filter()` | Firewall filter rules |
+| `ip().firewall().mangle()` | Firewall Mangle rules |
+| `ip().firewall().addressList()` | Firewall address lists |
 | `wifi()` | Legacy/modern WiFi registration and remote-CAP resolution |
 | `interfaces()` | Interfaces, IP addresses and traffic monitoring |
 | `queue().type()` | Queue-type reads and PCQ parameters |
-| `snmp()` | Community reads and supported writes |
-| `files()` | RouterOS file metadata and downloads |
-| `system()` | Finite router-originated ping |
+| `snmp().community()` | SNMP community reads and supported writes |
+| `file()` | RouterOS file metadata and downloads |
+| `ping(PingRequest)` | Finite router-originated root-level /ping |
 | `raw()` | Explicit RouterOS commands and unmodified raw results |
-| `async()` | Asynchronous counterparts to typed and raw commands |
+| `async()` | Asynchronous counterparts with the same menu hierarchy |
 
 The public typed entities preserve original RouterOS properties through
 `raw()` so that additional firmware-specific fields remain accessible.

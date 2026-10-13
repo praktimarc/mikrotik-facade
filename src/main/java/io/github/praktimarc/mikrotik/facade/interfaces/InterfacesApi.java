@@ -4,7 +4,6 @@ import io.github.praktimarc.mikrotik.facade.RouterOsProperties;
 import io.github.praktimarc.mikrotik.facade.RouterOsRecord;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
-import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceAddressMapper;
 import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceInfoMapper;
 import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceMonitorMapper;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
@@ -26,7 +25,6 @@ import java.util.concurrent.Flow;
 /** Synchronous typed interface and IP-address facade plus streaming traffic monitoring. */
 public final class InterfacesApi {
     static final String INTERFACE_PATH = "/interface/print";
-    static final String ADDRESS_PATH = "/ip/address/print";
     static final String MONITOR_PATH = "/interface/monitor-traffic";
     static final int MONITOR_QUEUE_CAPACITY = 64;
 
@@ -37,7 +35,6 @@ public final class InterfacesApi {
     private final Executor callbackExecutor;
     private final StreamRegistry streamRegistry;
     private final InterfaceInfoMapper interfaceMapper;
-    private final InterfaceAddressMapper addressMapper;
     private final InterfaceMonitorMapper monitorMapper;
 
     /** Creates the interface facade for session wiring. */
@@ -49,7 +46,7 @@ public final class InterfacesApi {
             Executor callbackExecutor,
             StreamRegistry streamRegistry) {
         this(connection, engine, lifecycle, dispatchExecutor, callbackExecutor, streamRegistry,
-                new InterfaceInfoMapper(), new InterfaceAddressMapper(), new InterfaceMonitorMapper());
+                new InterfaceInfoMapper(), new InterfaceMonitorMapper());
     }
 
     InterfacesApi(
@@ -60,7 +57,6 @@ public final class InterfacesApi {
             Executor callbackExecutor,
             StreamRegistry streamRegistry,
             InterfaceInfoMapper interfaceMapper,
-            InterfaceAddressMapper addressMapper,
             InterfaceMonitorMapper monitorMapper) {
         this.connection = Objects.requireNonNull(connection, "connection");
         this.engine = Objects.requireNonNull(engine, "engine");
@@ -69,7 +65,6 @@ public final class InterfacesApi {
         this.callbackExecutor = Objects.requireNonNull(callbackExecutor, "callbackExecutor");
         this.streamRegistry = Objects.requireNonNull(streamRegistry, "streamRegistry");
         this.interfaceMapper = Objects.requireNonNull(interfaceMapper, "interfaceMapper");
-        this.addressMapper = Objects.requireNonNull(addressMapper, "addressMapper");
         this.monitorMapper = Objects.requireNonNull(monitorMapper, "monitorMapper");
     }
 
@@ -82,17 +77,6 @@ public final class InterfacesApi {
     public List<InterfaceInfo> list(RouterOsProperties queries) throws MikrotikFacadeException {
         lifecycle.ensureOpen();
         return engine.executeSync(listOperation(queries, interfaceMapper));
-    }
-
-    /** Lists all RouterOS IP address assignments. */
-    public List<InterfaceAddress> addresses() throws MikrotikFacadeException {
-        return addresses(emptyProperties());
-    }
-
-    /** Lists IP address assignments matching exact RouterOS properties. */
-    public List<InterfaceAddress> addresses(RouterOsProperties queries) throws MikrotikFacadeException {
-        lifecycle.ensureOpen();
-        return engine.executeSync(addressesOperation(queries, addressMapper));
     }
 
     /**
@@ -122,13 +106,6 @@ public final class InterfacesApi {
             InterfaceInfoMapper mapper) {
         RouterOsCommand command = commandWithQueries(INTERFACE_PATH, queries);
         return listOperation("list interfaces", command, queries, mapper::map);
-    }
-
-    static RouterOsOperation<List<InterfaceAddress>> addressesOperation(
-            RouterOsProperties queries,
-            InterfaceAddressMapper mapper) {
-        RouterOsCommand command = commandWithQueries(ADDRESS_PATH, queries);
-        return listOperation("list interface addresses", command, queries, mapper::map);
     }
 
     private static RouterOsCommand commandWithQueries(String path, RouterOsProperties queries) {

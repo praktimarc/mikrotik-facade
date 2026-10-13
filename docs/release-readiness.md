@@ -22,6 +22,14 @@ GitHub Actions on `main` runs both commands, checks for forbidden low-level inte
 
 This is a **targeted repository hygiene check**, not a complete security audit. The existing JUnit suite covers redacted diagnostics, query/command semantics, backpressure and failure mapping. Review environment files and arbitrary resources manually before any public release; never commit actual device credentials or private keys.
 
+## Snapshot API change
+
+The public API now follows RouterOS menu paths more closely. This is an
+intentional breaking change in the unreleased `0.1.0-SNAPSHOT`; the
+[API migration table](api-migration-menu-hierarchy.md) lists required source
+and import replacements for early adopters. The underlying RouterOS operations
+and low-level dependency remain unchanged.
+
 ## Open before a first facade release
 
 1. **Real RouterOS integration:** Seven target profiles are documented in [routeros-test-profiles.md](routeros-test-profiles.md). Read-only tests are optional/credential-gated, and a passing mock/loopback suite must not be represented as coverage of all real devices, RouterOS versions or wireless stacks.

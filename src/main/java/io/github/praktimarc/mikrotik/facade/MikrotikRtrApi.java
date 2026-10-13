@@ -1,14 +1,17 @@
 package io.github.praktimarc.mikrotik.facade;
 
 import io.github.praktimarc.mikrotik.facade.async.AsyncMikrotikRtrApi;
-import io.github.praktimarc.mikrotik.facade.dhcp.AsyncDhcpServerApi;
-import io.github.praktimarc.mikrotik.facade.dhcp.DhcpServerApi;
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
+import io.github.praktimarc.mikrotik.facade.ip.IpApi;
+import io.github.praktimarc.mikrotik.facade.ip.AsyncIpApi;
+import io.github.praktimarc.mikrotik.facade.ping.PingApi;
+import io.github.praktimarc.mikrotik.facade.ping.AsyncPingApi;
+import io.github.praktimarc.mikrotik.facade.ping.PingRequest;
+import io.github.praktimarc.mikrotik.facade.ping.PingResult;
 import io.github.praktimarc.mikrotik.facade.environment.RouterOsEnvironment;
-import io.github.praktimarc.mikrotik.facade.firewall.AsyncFirewallApi;
-import io.github.praktimarc.mikrotik.facade.firewall.FirewallApi;
-import io.github.praktimarc.mikrotik.facade.files.AsyncFilesApi;
-import io.github.praktimarc.mikrotik.facade.files.FilesApi;
-import io.github.praktimarc.mikrotik.facade.files.internal.FileDownloadExecutor;
+import io.github.praktimarc.mikrotik.facade.file.AsyncFileApi;
+import io.github.praktimarc.mikrotik.facade.file.FileApi;
+import io.github.praktimarc.mikrotik.facade.file.internal.FileDownloadExecutor;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
 import io.github.praktimarc.mikrotik.facade.interfaces.AsyncInterfacesApi;
 import io.github.praktimarc.mikrotik.facade.interfaces.InterfacesApi;
@@ -23,8 +26,6 @@ import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
 import io.github.praktimarc.mikrotik.facade.raw.RawApi;
 import io.github.praktimarc.mikrotik.facade.snmp.AsyncSnmpApi;
 import io.github.praktimarc.mikrotik.facade.snmp.SnmpApi;
-import io.github.praktimarc.mikrotik.facade.system.AsyncSystemApi;
-import io.github.praktimarc.mikrotik.facade.system.SystemApi;
 import io.github.praktimarc.mikrotik.facade.wifi.AsyncWifiApi;
 import io.github.praktimarc.mikrotik.facade.wifi.WifiApi;
 import me.legrange.mikrotik.ApiConnection;
@@ -62,14 +63,13 @@ public final class MikrotikRtrApi implements AutoCloseable {
     private final StreamRegistry streamRegistry;
     private final FileDownloadExecutor fileDownloadExecutor;
     private final RawApi raw;
-    private final DhcpServerApi dhcpServer;
-    private final FirewallApi firewall;
+    private final IpApi ip;
     private final WifiApi wifi;
     private final InterfacesApi interfaces;
     private final QueueApi queue;
     private final SnmpApi snmp;
-    private final SystemApi system;
-    private final FilesApi files;
+    private final PingApi pingApi;
+    private final FileApi file;
     private final AsyncMikrotikRtrApi async;
 
     MikrotikRtrApi(ApiConnection connection, SessionLifecycle lifecycle, RouterOsEnvironment environment, Executor configuredCallbackExecutor) {
@@ -111,46 +111,46 @@ public final class MikrotikRtrApi implements AutoCloseable {
         this.capabilityRegistry=new CapabilityRegistry(diagnostics);
         this.streamRegistry=new StreamRegistry();
         this.raw=new RawApi(commandEngine,lifecycle);
-        this.dhcpServer=new DhcpServerApi(commandEngine,lifecycle);
-        this.firewall=new FirewallApi(commandEngine,lifecycle);
+        this.ip=new IpApi(commandEngine,lifecycle);
         this.wifi=new WifiApi(commandEngine,lifecycle,environment,capabilityRegistry);
         this.interfaces=new InterfacesApi(connection,commandEngine,lifecycle,dispatchExecutor,callbackExecutor,streamRegistry);
         this.queue=new QueueApi(commandEngine,lifecycle);
         this.snmp=new SnmpApi(commandEngine,lifecycle);
-        this.system=new SystemApi(commandEngine,lifecycle);
-        this.files=new FilesApi(connection,commandEngine,lifecycle);
+        this.pingApi=new PingApi(commandEngine,lifecycle);
+        this.file=new FileApi(connection,commandEngine,lifecycle);
         this.async=new AsyncMikrotikRtrApi(
                 new AsyncRawApi(commandEngine,lifecycle,callbackExecutor),
-                new AsyncDhcpServerApi(commandEngine,lifecycle,callbackExecutor),
-                new AsyncFirewallApi(commandEngine,lifecycle,callbackExecutor),
+                new AsyncIpApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncWifiApi(commandEngine,lifecycle,callbackExecutor,environment,capabilityRegistry),
                 new AsyncInterfacesApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncQueueApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncSnmpApi(commandEngine,lifecycle,callbackExecutor),
-                new AsyncSystemApi(commandEngine,lifecycle,callbackExecutor),
-                new AsyncFilesApi(connection,commandEngine,lifecycle,callbackExecutor,fileDownloadExecutor));
+                new AsyncPingApi(commandEngine,lifecycle,callbackExecutor),
+                new AsyncFileApi(connection,commandEngine,lifecycle,callbackExecutor,fileDownloadExecutor));
         this.diagnostics.sessionReady();
     }
 
     public static MikrotikRtrApiBuilder builder(){return new MikrotikRtrApiBuilder();}
     public RouterOsEnvironment environment(){return environment;}
     public RawApi raw(){return raw;}
-    public DhcpServerApi dhcpServer(){return dhcpServer;}
-    public FirewallApi firewall(){return firewall;}
+    /** Returns the RouterOS /ip API. */
+    public IpApi ip(){return ip;}
     /** Returns the compatibility-aware typed WiFi/CAPsMAN API.
      * @return typed WiFi API
      */
     public WifiApi wifi(){return wifi;}
-    /** Returns the typed interface/address API and traffic monitoring entry point. */
+    /** Returns the typed interface API and traffic monitoring entry point. */
     public InterfacesApi interfaces(){return interfaces;}
     /** Returns the typed queue API. */
     public QueueApi queue(){return queue;}
     /** Returns the typed SNMP API. */
     public SnmpApi snmp(){return snmp;}
-    /** Returns the typed system/diagnostic API. */
-    public SystemApi system(){return system;}
-    /** Returns the typed RouterOS files API. */
-    public FilesApi files(){return files;}
+    /** Executes finite router-originated /ping. */
+    public PingResult ping(PingRequest request) throws MikrotikFacadeException {
+        return pingApi.ping(request);
+    }
+    /** Returns the RouterOS /file API. */
+    public FileApi file(){return file;}
     public AsyncMikrotikRtrApi async(){return async;}
 
     @Override public void close() throws MikrotikConnectionException {

@@ -4,7 +4,6 @@ import io.github.praktimarc.mikrotik.facade.RouterOsProperties;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandResult;
 import java.util.List;
 import java.util.Map;
-import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceAddressMapper;
 import io.github.praktimarc.mikrotik.facade.interfaces.internal.InterfaceInfoMapper;
 import org.junit.jupiter.api.Test;
 
@@ -20,12 +19,4 @@ class InterfacesApiTest {
         assertEquals("ether1", operation.command().queries().get("name"));
     }
 
-    @Test
-    void addressOperationUsesIpAddressPathAndCommentQuery() {
-        var operation = InterfacesApi.addressesOperation(
-                RouterOsProperties.builder().set("comment", "cmts-internal").build(),
-                new InterfaceAddressMapper());
-        assertEquals("/ip/address/print", operation.command().path());
-        assertEquals("cmts-internal", operation.command().queries().get("comment"));
-    }
 }

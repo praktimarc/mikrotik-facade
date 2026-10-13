@@ -19,8 +19,12 @@ class DhcpFacadeWiringTest {
                 new SessionLifecycle(),
                 environment(),
                 Runnable::run)) {
-            assertNotNull(api.dhcpServer());
-            assertNotNull(api.async().dhcpServer());
+            assertNotNull(api.ip().dhcpServer().lease());
+            assertNotNull(api.ip().pool());
+            assertNotNull(api.ip().address());
+            assertNotNull(api.async().ip().dhcpServer().lease());
+            assertNotNull(api.async().ip().pool());
+            assertNotNull(api.async().ip().address());
         }
     }
 

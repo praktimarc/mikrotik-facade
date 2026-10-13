@@ -19,14 +19,14 @@ class FirewallFacadeWiringTest {
                 new SessionLifecycle(),
                 environment(),
                 Runnable::run)) {
-            assertNotNull(api.firewall());
-            assertNotNull(api.firewall().filter());
-            assertNotNull(api.firewall().mangle());
-            assertNotNull(api.firewall().addressList());
-            assertNotNull(api.async().firewall());
-            assertNotNull(api.async().firewall().filter());
-            assertNotNull(api.async().firewall().mangle());
-            assertNotNull(api.async().firewall().addressList());
+            assertNotNull(api.ip().firewall());
+            assertNotNull(api.ip().firewall().filter());
+            assertNotNull(api.ip().firewall().mangle());
+            assertNotNull(api.ip().firewall().addressList());
+            assertNotNull(api.async().ip().firewall());
+            assertNotNull(api.async().ip().firewall().filter());
+            assertNotNull(api.async().ip().firewall().mangle());
+            assertNotNull(api.async().ip().firewall().addressList());
         }
     }
 
