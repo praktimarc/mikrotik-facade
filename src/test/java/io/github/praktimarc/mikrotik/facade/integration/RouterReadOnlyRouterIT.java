@@ -42,8 +42,8 @@ class RouterReadOnlyRouterIT {
             // Multiple finite commands are intentionally active on one authenticated session.
             CompletableFuture<?> interfacesA = api.async().interfaces().list();
             CompletableFuture<?> interfacesB = api.async().interfaces().list();
-            CompletableFuture<?> addressesA = api.async().interfaces().addresses();
-            CompletableFuture<?> addressesB = api.async().interfaces().addresses();
+            CompletableFuture<?> addressesA = api.async().ip().address().list();
+            CompletableFuture<?> addressesB = api.async().ip().address().list();
 
             CompletableFuture.allOf(
                             interfacesA,
