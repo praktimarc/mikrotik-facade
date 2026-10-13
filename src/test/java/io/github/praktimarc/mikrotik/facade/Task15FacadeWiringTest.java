@@ -25,11 +25,13 @@ class Task15FacadeWiringTest {
             assertNotNull(api.queue());
             assertNotNull(api.queue().type());
             assertNotNull(api.snmp());
-            assertNotNull(api.system());
+            assertNotNull(api.snmp().community());
+            assertNotNull(api.ip());
             assertNotNull(api.async().queue());
             assertNotNull(api.async().queue().type());
             assertNotNull(api.async().snmp());
-            assertNotNull(api.async().system());
+            assertNotNull(api.async().snmp().community());
+            assertNotNull(api.async().ip());
         }
     }
 

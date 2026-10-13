@@ -29,8 +29,8 @@ class FilesFacadeWiringTest {
                 new SessionLifecycle(),
                 environment(),
                 Runnable::run)) {
-            assertNotNull(api.files());
-            assertNotNull(api.async().files());
+            assertNotNull(api.file());
+            assertNotNull(api.async().file());
         }
     }
 
@@ -44,7 +44,7 @@ class FilesFacadeWiringTest {
                 Runnable::run);
 
         CompletableFuture<?> download =
-                api.async().files().download("flash/test.bin", Path.of("unused.bin"));
+                api.async().file().download("flash/test.bin", Path.of("unused.bin"));
         assertTrue(connection.downloadEntered.await(2, TimeUnit.SECONDS));
 
         api.close();

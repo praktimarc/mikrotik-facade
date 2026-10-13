@@ -27,6 +27,8 @@ class InterfacesFacadeWiringTest {
                 connection, new SessionLifecycle(), environment, Runnable::run);
         try {
             assertNotNull(api.interfaces());
+            assertNotNull(api.ip().address());
+            assertNotNull(api.async().ip().address());
             assertNotNull(api.async().interfaces());
             api.interfaces().monitor("ether1").subscribe(new RequestingSubscriber());
             assertTrue(connection.executeEntered.await(2, TimeUnit.SECONDS));
