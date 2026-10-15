@@ -24,7 +24,7 @@ class LowLevelContractConfigurationTest {
 
         String contract = Files.readString(Path.of("docs/low-level-contract.md"));
         assertTrue(contract.contains("3.0.8-praktimarc.5-SNAPSHOT"));
-        assertTrue(contract.contains("8bf0c94a5b394e4f460b8beee83d8daaf4a74c7e"));
+        assertTrue(contract.contains("b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b"));
     }
 
     @Test

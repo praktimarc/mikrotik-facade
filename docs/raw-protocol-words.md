@@ -65,7 +65,7 @@ plus the internal tag and terminator.
 This feature requires `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5-SNAPSHOT`.
 It is **not yet published on Maven Central**. Build and install the
 `praktimarc/mikrotik-java` source from commit
-`8bf0c94a5b394e4f460b8beee83d8daaf4a74c7e` first:
+`b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b` first:
 
 ```sh
 mvn -B clean install

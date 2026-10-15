@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: praktimarc/mikrotik-java
-          ref: 8bf0c94a5b394e4f460b8beee83d8daaf4a74c7e
+          ref: b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b
           path: .low-level-build
       - name: Install low-level development snapshot
         run: |
