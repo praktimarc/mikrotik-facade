@@ -296,7 +296,9 @@ public final class CommandEngine {
         };
 
         try {
-            String tag = connection.execute(command.serialize(), listener);
+            String tag = command.hasWireWords()
+                    ? connection.executeWords(command.wireWords(), listener)
+                    : connection.execute(command.serialize(), listener);
             context.tagAssigned(tag);
         } catch (MikrotikApiException failure) {
             context.fail(ExceptionMapper.map(

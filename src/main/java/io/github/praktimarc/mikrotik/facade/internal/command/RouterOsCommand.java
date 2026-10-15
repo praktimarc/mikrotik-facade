@@ -16,6 +16,7 @@ import java.util.Objects;
 public final class RouterOsCommand {
 
     private final String path;
+    private final List<String> wireWords;
     private final Map<String, String> arguments;
     private final List<String> flags;
     private final Map<String, String> queries;
@@ -25,6 +26,7 @@ public final class RouterOsCommand {
 
     private RouterOsCommand(Builder builder) {
         this.path = validatePath(builder.path);
+        this.wireWords = builder.wireWords == null ? List.of() : List.copyOf(builder.wireWords);
         this.arguments = immutableOrderedCopy(builder.arguments);
         this.flags = List.copyOf(builder.flags);
         this.queries = immutableOrderedCopy(builder.queries);
@@ -36,6 +38,39 @@ public final class RouterOsCommand {
     /** Creates a builder for a RouterOS command path. */
     public static Builder builder(String path) {
         return new Builder(path);
+    }
+
+    /**
+     * Creates a protocol-word command. These words bypass the string parser;
+     * RouterOS values and syntax are never rewritten or normalized.
+     */
+    public static RouterOsCommand fromWireWords(List<String> words) {
+        Objects.requireNonNull(words, "words");
+        if (words.isEmpty()) {
+            throw new IllegalArgumentException("Protocol word list must start with a command path");
+        }
+        List<String> copy = List.copyOf(words);
+        String path = validatePath(copy.get(0));
+        if (!path.equals(copy.get(0))) {
+            throw new IllegalArgumentException("Protocol command path must not contain surrounding whitespace");
+        }
+        for (int i = 1; i < copy.size(); i++) {
+            String word = copy.get(i);
+            if (word.isEmpty() || word.indexOf((char) 0) >= 0 || word.startsWith(".tag=")) {
+                throw new IllegalArgumentException("Invalid RouterOS protocol word at index " + i);
+            }
+        }
+        Builder builder = new Builder(path);
+        builder.wireWords = copy;
+        return builder.build();
+    }
+
+    public boolean hasWireWords() {
+        return !wireWords.isEmpty();
+    }
+
+    public List<String> wireWords() {
+        return wireWords;
     }
 
     /** Returns the command path without arguments. */
@@ -83,6 +118,17 @@ public final class RouterOsCommand {
      * <p>The returned values must never be used for diagnostics.</p>
      */
     public Map<String, String> queryValuesForRedaction() {
+        if (hasWireWords()) {
+            LinkedHashMap<String, String> values = new LinkedHashMap<>();
+            for (int index = 1; index < wireWords.size(); index++) {
+                String word = wireWords.get(index);
+                int delimiter = word.lastIndexOf('=');
+                if (delimiter >= 0 && delimiter + 1 < word.length()) {
+                    values.put("wire-value-" + index, word.substring(delimiter + 1));
+                }
+            }
+            return Collections.unmodifiableMap(values);
+        }
         if (queryExpression == null) {
             return Map.of();
         }
@@ -105,6 +151,9 @@ public final class RouterOsCommand {
      * @return low-level command string
      */
     public String serialize() {
+        if (hasWireWords()) {
+            throw new IllegalStateException("Protocol words must be dispatched without string serialization");
+        }
         StringBuilder command = new StringBuilder(path);
         arguments.forEach((key, value) -> command
                 .append(' ')
@@ -204,6 +253,7 @@ public final class RouterOsCommand {
     /** Builder whose result is an immutable command snapshot. */
     public static final class Builder {
         private final String path;
+        private List<String> wireWords;
         private final LinkedHashMap<String, String> arguments = new LinkedHashMap<>();
         private final List<String> flags = new ArrayList<>();
         private final LinkedHashMap<String, String> queries = new LinkedHashMap<>();
