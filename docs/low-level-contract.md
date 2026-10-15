@@ -6,7 +6,7 @@ The v1 facade is built against exactly:
 
 ```text
 io.github.praktimarc:mikrotik:3.0.8-praktimarc.5-SNAPSHOT
-development commit: b16901723e7609da7dd8d1a8623da5e2169001f6
+development commit: 8bf0c94a5b394e4f460b8beee83d8daaf4a74c7e
 low-level Java baseline: 11
 facade Java baseline: 17
 ```
