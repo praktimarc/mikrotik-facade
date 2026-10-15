@@ -25,6 +25,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # Temporary: the required low-level word API has not been published to Central.
+      - name: Checkout pinned mikrotik-java
+        uses: actions/checkout@v7
+        with:
+          repository: praktimarc/mikrotik-java
+          ref: b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b
+          path: .low-level-build
+      - name: Install low-level development snapshot
+        run: |
+          mvn -B -ntp -f .low-level-build/pom.xml clean install
+          rm -rf .low-level-build
       - name: Verify with Maven
         run: mvn -B -U clean verify --file pom.xml
       - name: Check low-level API boundary and tracked sensitive files

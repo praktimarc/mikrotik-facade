@@ -5,8 +5,8 @@
 The v1 facade is built against exactly:
 
 ```text
-io.github.praktimarc:mikrotik:3.0.8-praktimarc.4
-release commit: c170858efaac04fc78771903ef4c2bdbb6d35325
+io.github.praktimarc:mikrotik:3.0.8-praktimarc.5-SNAPSHOT
+development commit: b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b
 low-level Java baseline: 11
 facade Java baseline: 17
 ```
@@ -14,7 +14,7 @@ facade Java baseline: 17
 The contract suite exists because the facade relies on behavioral guarantees that are
 stronger than merely compiling against the public classes.
 
-The pinned low-level POM and JAR are publicly resolvable from Maven Central. This was verified on 2026-10-08 by an external Maven build using a new, empty local repository. The dependency does not require GitHub Packages credentials or a locally installed JAR.
+The previous low-level version, 3.0.8-praktimarc.4, was verified from Maven Central on 2026-10-08. The current exact-words development dependency is a newer **unpublished snapshot**; build/install it locally from the pinned mikrotik-java commit before building this facade. CI installs it from the source commit before verification.
 
 ## Contract covered by the facade
 
@@ -40,9 +40,12 @@ The binary contract fixture deliberately contains NUL bytes, non-UTF-8-looking b
 and RouterOS-protocol-looking byte sequences. Payload data is therefore tested as bytes,
 not text.
 
+The low-level API now exposes `executeWords(List<String>, ResultListener)` to
+send exact UTF-8 API words, preserving ordering and bypassing the parser.
+The existing string-parser and binary-file contracts remain in use.
+
 The contract suite also pins the supported public string-parser query grammar. Presence query words
-(`?name` / `?-name`) remain outside the facade because this low-level release has no
-safe public parser syntax for them; no internal `impl.*` workaround is permitted.
+(`?name` / `?-name`) remain outside the **structured parser API**; they can now be sent using `raw().words(...)` without any internal `impl.*` workaround.
 
 ## Upgrade rule
 

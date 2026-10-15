@@ -15,7 +15,7 @@ class LowLevelContractConfigurationTest {
         String pom = Files.readString(Path.of("pom.xml"));
 
         assertTrue(pom.contains("<artifactId>mikrotik</artifactId>"));
-        assertTrue(pom.contains("<version>3.0.8-praktimarc.4</version>"));
+        assertTrue(pom.contains("<version>3.0.8-praktimarc.5-SNAPSHOT</version>"));
         assertTrue(pom.contains("<exclude>**/*IT.java</exclude>"));
         assertTrue(pom.contains("<id>router-it</id>"));
         assertTrue(pom.contains("<artifactId>maven-failsafe-plugin</artifactId>"));
@@ -23,8 +23,8 @@ class LowLevelContractConfigurationTest {
         assertTrue(pom.contains("<include>**/*RouterIT.java</include>"));
 
         String contract = Files.readString(Path.of("docs/low-level-contract.md"));
-        assertTrue(contract.contains("3.0.8-praktimarc.4"));
-        assertTrue(contract.contains("c170858efaac04fc78771903ef4c2bdbb6d35325"));
+        assertTrue(contract.contains("3.0.8-praktimarc.5-SNAPSHOT"));
+        assertTrue(contract.contains("b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b"));
     }
 
     @Test

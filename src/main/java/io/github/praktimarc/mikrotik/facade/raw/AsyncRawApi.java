@@ -68,6 +68,20 @@ public final class AsyncRawApi {
         return new RawCommandBuilder.Async(this, commandPath);
     }
 
+    /** Executes exact RouterOS API words asynchronously on the existing session. */
+    public CompletableFuture<RawCommandResult> words(List<String> words) {
+        return executeCommand(RouterOsCommand.fromWireWords(words));
+    }
+
+    /** Convenience form of {@link #words(List)} with the command path first. */
+    public CompletableFuture<RawCommandResult> words(String path, String... words) {
+        Objects.requireNonNull(words, "words");
+        java.util.ArrayList<String> sentence = new java.util.ArrayList<>(words.length + 1);
+        sentence.add(path);
+        java.util.Collections.addAll(sentence, words);
+        return words(sentence);
+    }
+
     CompletableFuture<RawCommandResult> executeCommand(RouterOsCommand command) {
         try {
             lifecycle.ensureOpen();

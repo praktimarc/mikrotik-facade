@@ -326,3 +326,18 @@ More details: [getting started](getting-started.md),
 [query/filter semantics](query-filtering.md),
 [RouterOS compatibility](routeros-compatibility.md), and
 [release readiness](release-readiness.md).
+
+
+## Exact RouterOS API words (diagnostic)
+
+When testing RouterOS query handling, bypass the pseudo-CLI string parser:
+
+~~~java
+var query = api.raw().words(
+        "/interface/wifi/capsman/remote-cap/print",
+        "?base-mac=D0:EA:11:8A:2F:9B");
+System.out.println(query.records().size());
+~~~
+
+See [raw protocol words](raw-protocol-words.md). The word-level API requires
+an unpublished development dependency until the next low-level release.

@@ -22,6 +22,15 @@ GitHub Actions on `main` runs both commands, checks for forbidden low-level inte
 
 This is a **targeted repository hygiene check**, not a complete security audit. The existing JUnit suite covers redacted diagnostics, query/command semantics, backpressure and failure mapping. Review environment files and arbitrary resources manually before any public release; never commit actual device credentials or private keys.
 
+## Unpublished word-level transport dependency
+
+The `raw().words(...)` API currently requires the unpublished
+`mikrotik:3.0.8-praktimarc.5-SNAPSHOT` from source. Build/install this
+low-level snapshot before compiling the facade; the exact pinned SHA and
+diagnostic examples are in [raw protocol words](raw-protocol-words.md).
+Do not describe this snapshot as Maven Central ready until a new signed
+low-level release has been staged and published.
+
 ## Snapshot API change
 
 The public API now follows RouterOS menu paths more closely. This is an

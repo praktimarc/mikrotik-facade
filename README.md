@@ -81,6 +81,8 @@ production-specific values are included.
 
 ## Documentation
 
+- [Exact RouterOS API words for protocol debugging](docs/raw-protocol-words.md)
+
 - [Getting started, examples and failure semantics](docs/getting-started.md)
 - [Practical Java examples and common workflows](docs/examples.md)
 - [Release-readiness and remaining gates](docs/release-readiness.md)

@@ -56,6 +56,27 @@ public final class RawApi {
         return new RawCommandBuilder(this, commandPath);
     }
 
+    /**
+     * Executes exact RouterOS API words, bypassing the low-level CLI string parser.
+     * The first word is the absolute command path. Later words can be arbitrary
+     * RouterOS API argument/query words such as {@code ?=base-mac=value}.
+     *
+     * <p>The connection owns the command correlation tag. This is a powerful
+     * diagnostic interface that can also send configuration mutations.</p>
+     */
+    public RawCommandResult words(List<String> words) throws MikrotikFacadeException {
+        return executeCommand(RouterOsCommand.fromWireWords(words));
+    }
+
+    /** Convenience form of {@link #words(List)} with the command path first. */
+    public RawCommandResult words(String path, String... words) throws MikrotikFacadeException {
+        Objects.requireNonNull(words, "words");
+        java.util.ArrayList<String> sentence = new java.util.ArrayList<>(words.length + 1);
+        sentence.add(path);
+        java.util.Collections.addAll(sentence, words);
+        return words(sentence);
+    }
+
     RawCommandResult executeCommand(RouterOsCommand command) throws MikrotikFacadeException {
         lifecycle.ensureOpen();
         return engine.executeSync(new RawCommandBuilder.ResultOperation(command));
