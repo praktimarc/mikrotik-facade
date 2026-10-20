@@ -22,8 +22,8 @@ ip.firewall.filter.FilterApi	find,findByComment,add,setDisabled	docs/advanced-co
 ip.firewall.filter.AsyncFilterApi	find,findByComment,add,setDisabled	docs/advanced-cookbook.md
 ip.firewall.mangle.MangleApi	find,findBySourceAddress,findByDestinationAddress,findByComment,add,setDisabled,remove	docs/advanced-cookbook.md
 ip.firewall.mangle.AsyncMangleApi	find,findBySourceAddress,findByDestinationAddress,findByComment,add,setDisabled,remove	docs/advanced-cookbook.md
-ip.firewall.addresslist.AddressListApi	find,findByListAndAddress,add	docs/advanced-cookbook.md
-ip.firewall.addresslist.AsyncAddressListApi	find,findByListAndAddress,add	docs/advanced-cookbook.md
+ip.firewall.addresslist.AddressListApi	find,findByListAndAddress,add,setProperties,remove	docs/advanced-cookbook.md
+ip.firewall.addresslist.AsyncAddressListApi	find,findByListAndAddress,add,setProperties,remove	docs/advanced-cookbook.md
 interfaces.InterfacesApi	list,monitor	docs/advanced-cookbook.md
 interfaces.AsyncInterfacesApi	list	docs/advanced-cookbook.md
 wifi.WifiApi	registrationTable,remoteCaps,findRemoteCapByBaseMac	docs/advanced-cookbook.md

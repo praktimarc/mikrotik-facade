@@ -145,7 +145,7 @@ The ID might become stale between read and write. There is no automatic
 rollback or concurrency lock. The public Filter API intentionally does
 **not** expose `remove`; Mangle does.
 
-## 3. Firewall Address Lists: read and guarded add
+## 3. Firewall Address Lists: read, add, update and remove
 
 ```java
 var matches = api.ip().firewall().addressList()
@@ -185,6 +185,69 @@ if (approvedForTestRouter) {
 
 The facade does not impose an application-specific uniqueness or
 authorization policy for `add`. Check existing records first when needed.
+
+### Update or remove an existing entry by RouterOS ID
+
+Both `setProperties(id, properties)` and `remove(id)` require the exact
+RouterOS `.id`, **not** an IP address or list name. This example is
+disabled by default. It first checks the list and address, then verifies
+that there is exactly one match with a returned ID. An update and
+a removal are **separate** operator decisions.
+
+```java
+boolean approvedForTestRouter = false;
+
+if (approvedForTestRouter) {
+    var entries = api.ip().firewall().addressList()
+            .findByListAndAddress("example-list", "192.0.2.10");
+
+    if (entries.size() == 1) {
+        var entry = entries.get(0);
+        String routerOsId = entry.id().orElseThrow();
+
+        api.ip().firewall().addressList().setProperties(
+                routerOsId,
+                RouterOsProperties.builder()
+                        .set("comment", "test-update")
+                        .set("disabled", "true")
+                        .build());
+
+        // Separate, explicitly destructive operation (not run by default):
+        // api.ip().firewall().addressList().remove(routerOsId);
+    }
+}
+```
+
+For asynchronous use, apply the same approval and identity checks.
+The following snippet is deliberately disabled:
+
+```java
+boolean approvedForAsyncTestRouter = false;
+
+if (approvedForAsyncTestRouter) {
+    var matches = api.ip().firewall().addressList()
+            .findByListAndAddress("example-list", "192.0.2.10");
+    if (matches.size() == 1) {
+        String exactId = matches.get(0).id().orElseThrow();
+        var change = api.async().ip().firewall().addressList()
+                .setProperties(exactId,
+                        RouterOsProperties.builder()
+                                .set("comment", "approved-change")
+                                .build());
+        change.get(30, java.util.concurrent.TimeUnit.SECONDS);
+
+        // Only after a separate explicit decision:
+        // var removal = api.async().ip().firewall().addressList().remove(exactId);
+    }
+}
+```
+
+Both asynchronous calls **modify router configuration** when invoked.
+Await or cancel returned futures before closing the session.
+Empty update properties and replacing `.id` are rejected. The methods
+do not perform a second identity lookup, provide rollback, or guarantee
+that a dynamic/expired entry can be updated or deleted. RouterOS may
+change state between the read and the write.
 
 ## 4. SNMP communities: protect sensitive fields
 

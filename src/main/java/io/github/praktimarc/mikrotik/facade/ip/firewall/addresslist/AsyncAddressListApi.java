@@ -68,6 +68,33 @@ public final class AsyncAddressListApi {
         return engine.executeAsync(AddressListApi.addOperation(properties));
     }
 
+    /**
+     * Updates one existing address-list entry by its exact RouterOS item ID.
+     *
+     * <p>Destructive if properties change behavior. The caller must verify
+     * authorization and target identity. The update map must be nonempty
+     * and must not contain the reserved {@code .id} key.</p>
+     *
+     * @param id exact RouterOS item ID, not IP address or list name
+     * @param properties fields to update
+     * @return cancellable completion future
+     */
+    public CompletableFuture<Void> setProperties(String id, RouterOsProperties properties) {
+        try { lifecycle.ensureOpen(); } catch (MikrotikConnectionException broken) { return failedAsync(broken); }
+        return engine.executeAsync(AddressListApi.setPropertiesOperation(id, properties));
+    }
+
+    /**
+     * Removes one existing address-list entry by exact RouterOS item ID.
+     *
+     * @param id verified item ID
+     * @return cancellable completion future
+     */
+    public CompletableFuture<Void> remove(String id) {
+        try { lifecycle.ensureOpen(); } catch (MikrotikConnectionException broken) { return failedAsync(broken); }
+        return engine.executeAsync(AddressListApi.removeOperation(id));
+    }
+
     private <T> CompletableFuture<T> failedAsync(MikrotikConnectionException failure) {
         CompletableFuture<T> future = new CompletableFuture<>();
         callbackExecutor.execute(() -> future.completeExceptionally(failure));

@@ -62,7 +62,7 @@ The status describes the evidence available to this project. It is not a claim t
 | --- | --- | --- | --- | --- | --- | --- |
 | Firewall filter rules | `/ip/firewall/filter/print` | `SINGLE` | `.id`, chain, protocol, src/dst address, src/dst port, in/out interface and interface-list, bytes, packets, invalid, dynamic, disabled, comment | `HISTORICAL_OBSERVED` | Unknown properties remain in `raw()`; empty result is valid. | Covered |
 | Firewall Mangle rules | `/ip/firewall/mangle/print` | `SINGLE` | same proven rule surface as filter | `HISTORICAL_OBSERVED` | Generic layer does not deduplicate rows/ids. Mangle remove/set use exact RouterOS `.id`. | Covered |
-| Firewall Address List | `/ip/firewall/address-list/print` | `SINGLE` | `.id`, `list`, address, timeout, creation-time, dynamic, disabled, comment | `DOCUMENTED` + observed | Membership query uses `list`, not the legacy handler's `address-list` key. `address-list` is a different firewall-rule matcher/action property. | Covered |
+| Firewall Address List | `/ip/firewall/address-list/print`, `/ip/firewall/address-list/add`, `/ip/firewall/address-list/set`, `/ip/firewall/address-list/remove` | `SINGLE` | `.id`, `list`, address, timeout, creation-time, dynamic, disabled, comment | `DOCUMENTED` + observed | Membership query uses `list`, not the legacy handler's `address-list` key. `address-list` is a different firewall-rule matcher/action property. | Covered |
 
 ## Capability probe rules
 
