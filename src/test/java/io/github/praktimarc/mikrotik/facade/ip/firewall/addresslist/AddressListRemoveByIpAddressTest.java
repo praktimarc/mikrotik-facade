@@ -6,6 +6,7 @@ import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.testing.StubApiConnection;
 import me.legrange.mikrotik.ResultListener;
+import me.legrange.mikrotik.MikrotikApiException;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -44,26 +45,61 @@ class AddressListRemoveByIpAddressTest {
     }
 
     @Test
-    void sameIpInTwoListsOrRepeatedInOneListIsAmbiguousAndNotDeleted() throws Exception {
+    void removesAllMatchingAddressesAcrossListsAndWithinOneList() throws Exception {
         for (String secondList : List.of("allowed", "blocked")) {
             try (Fixture f = new Fixture()) {
                 f.connection.rows = List.of(
                         row("*A", "blocked", ADDRESS),
-                        row("*B", secondList, ADDRESS));
-                assertThrows(MikrotikDataException.class,
-                        () -> f.sync.removeByIpAddress(ADDRESS));
-                assertEquals(List.of(PRINT), f.connection.commands);
+                        row("*X", "different", "198.51.100.25"),
+                        row("*B", secondList, ADDRESS),
+                        row("*C", "third", ADDRESS));
+                assertTrue(f.sync.removeByIpAddress(ADDRESS));
+                assertEquals(List.of(
+                        PRINT,
+                        "/ip/firewall/address-list/remove .id='*A'",
+                        "/ip/firewall/address-list/remove .id='*B'",
+                        "/ip/firewall/address-list/remove .id='*C'"),
+                        f.connection.commands);
             }
         }
     }
 
     @Test
-    void matchingRowWithoutIdFailsClosedInsteadOfSendingRemove() throws Exception {
+    void repeatedIdInMatchingEntriesFailsBeforeAnyRemoval() throws Exception {
         try (Fixture f = new Fixture()) {
-            f.connection.rows = List.of(Map.of("list", "blocked", "address", ADDRESS));
+            f.connection.rows = List.of(
+                    row("*A", "blocked", ADDRESS), row("*A", "other", ADDRESS));
             assertThrows(MikrotikDataException.class,
                     () -> f.sync.removeByIpAddress(ADDRESS));
             assertEquals(List.of(PRINT), f.connection.commands);
+        }
+    }
+
+    @Test
+    void anyMatchingRowWithoutIdFailsBeforeAllRemovals() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "first", ADDRESS),
+                    Map.of("list", "blocked", "address", ADDRESS),
+                    row("*B", "third", ADDRESS));
+            assertThrows(MikrotikDataException.class,
+                    () -> f.sync.removeByIpAddress(ADDRESS));
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+    }
+
+    @Test
+    void failedRemovalStopsFurtherCommandsAfterEarlierSuccessfulRemoves() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "first", ADDRESS),
+                    row("*B", "second", ADDRESS),
+                    row("*C", "third", ADDRESS));
+            f.connection.failRemoveId = "*B";
+            assertThrows(Exception.class, () -> f.sync.removeByIpAddress(ADDRESS));
+            assertEquals(List.of(PRINT,
+                    "/ip/firewall/address-list/remove .id='*A'",
+                    "/ip/firewall/address-list/remove .id='*B'"), f.connection.commands);
         }
     }
 
@@ -98,15 +134,67 @@ class AddressListRemoveByIpAddressTest {
     }
 
     @Test
-    void asyncDuplicateCompletesExceptionallyWithoutRemoval() throws Exception {
+    void asynchronousRemovalDeletesEveryMatchingEntryInSequence() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(row("*A", "first", ADDRESS),
+                    row("*X", "not-matched", "192.0.2.11"),
+                    row("*B", "second", ADDRESS));
+            assertTrue(f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(List.of(PRINT,
+                    "/ip/firewall/address-list/remove .id='*A'",
+                    "/ip/firewall/address-list/remove .id='*B'"), f.connection.commands);
+        }
+    }
+
+    @Test
+    void asynchronousMissingIdOrRepeatedIdRejectsBeforeDeletion() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(row("*A", "first", ADDRESS),
+                    Map.of("address", ADDRESS, "list", "second"));
+            var e = assertThrows(java.util.concurrent.ExecutionException.class,
+                    () -> f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
+            assertInstanceOf(MikrotikDataException.class, e.getCause());
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(row("*A", "first", ADDRESS),
+                    row("*A", "second", ADDRESS));
+            var e = assertThrows(java.util.concurrent.ExecutionException.class,
+                    () -> f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
+            assertInstanceOf(MikrotikDataException.class, e.getCause());
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+    }
+
+    @Test
+    void asynchronousFailureDoesNotScheduleSubsequentRemovals() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(row("*A", "first", ADDRESS),
+                    row("*B", "second", ADDRESS), row("*C", "third", ADDRESS));
+            f.connection.failRemoveId = "*B";
+            assertThrows(java.util.concurrent.ExecutionException.class,
+                    () -> f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(List.of(PRINT,
+                    "/ip/firewall/address-list/remove .id='*A'",
+                    "/ip/firewall/address-list/remove .id='*B'"), f.connection.commands);
+        }
+    }
+
+    @Test
+    void cancellingPendingFirstRemoveDoesNotScheduleSubsequentRemovals() throws Exception {
         try (Fixture f = new Fixture()) {
             f.connection.rows = List.of(row("*A", "first", ADDRESS),
                     row("*B", "second", ADDRESS));
+            f.connection.deferRemoveId = "*A";
             var future = f.async.removeByIpAddress(ADDRESS);
-            var error = assertThrows(java.util.concurrent.ExecutionException.class,
-                    () -> future.get(3, TimeUnit.SECONDS));
-            assertInstanceOf(MikrotikDataException.class, error.getCause());
-            assertEquals(List.of(PRINT), f.connection.commands);
+            assertEquals(List.of(PRINT, "/ip/firewall/address-list/remove .id='*A'"),
+                    f.connection.commands);
+            assertNotNull(f.connection.pendingRemove);
+            assertTrue(future.cancel(true));
+            assertTrue(future.isCancelled());
+            f.connection.pendingRemove.completed();
+            assertEquals(List.of(PRINT, "/ip/firewall/address-list/remove .id='*A'"),
+                    f.connection.commands);
         }
     }
 
@@ -152,6 +240,9 @@ class AddressListRemoveByIpAddressTest {
         final java.util.List<String> commands = new java.util.ArrayList<>();
         volatile boolean deferPrint;
         volatile ResultListener pendingPrint;
+        volatile ResultListener pendingRemove;
+        volatile String failRemoveId;
+        volatile String deferRemoveId;
         int cancellations;
         int nextTag;
 
@@ -167,7 +258,13 @@ class AddressListRemoveByIpAddressTest {
                     listener.completed();
                 }
             } else if (command.startsWith("/ip/firewall/address-list/remove ")) {
-                listener.completed();
+                if (failRemoveId != null && command.endsWith(".id='" + failRemoveId + "'")) {
+                    listener.error(new MikrotikApiException("Simulated remove failure"));
+                } else if (deferRemoveId != null && command.endsWith(".id='" + deferRemoveId + "'")) {
+                    pendingRemove = listener;
+                } else {
+                    listener.completed();
+                }
             } else {
                 throw new AssertionError("Unexpected RouterOS command: " + command);
             }

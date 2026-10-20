@@ -249,11 +249,13 @@ do not perform a second identity lookup, provide rollback, or guarantee
 that a dynamic/expired entry can be updated or deleted. RouterOS may
 change state between the read and the write.
 
-### Remove by IP address when the match is unambiguous
+### Remove the address from **all** address lists
 
-For ordinary host-address entries, the convenience method can look up the
-RouterOS item ID and remove it automatically. The parameter remains a
-`String`, since RouterOS also represents `address` as a string.
+The convenience method `removeByIpAddress(String ipAddress)` removes
+**every entry** whose RouterOS `address` property equals the supplied
+string, across **all address lists**. It does not restrict the operation to
+a particular `list`. The input is a `String` because RouterOS represents
+address-list values as text.
 
 ```java
 boolean approvedForTestRouter = false;
@@ -261,29 +263,44 @@ boolean approvedForTestRouter = false;
 if (approvedForTestRouter) {
     boolean removed = api.ip().firewall().addressList()
             .removeByIpAddress("192.0.2.10");
-    System.out.println("Removed exactly one entry: " + removed);
+    System.out.println("At least one entry removed: " + removed);
 }
 ```
 
-The asynchronous equivalent is
-`api.async().ip().firewall().addressList().removeByIpAddress("192.0.2.10")`
-and returns `CompletableFuture<Boolean>`.
+The asynchronous equivalent returns `CompletableFuture<Boolean>`:
 
-The facade deliberately reads all address-list entries without a server-side
-address filter, checks the `address` field locally using **exact string
-comparison** and removes by `.id` only when there is exactly one match.
-This means `192.0.2.10` does not match `192.0.2.0/24`; there is no DNS or
-IP normalization. It returns `false` if absent and throws
-`MikrotikDataException` without removing anything if the address appears
-in multiple lists (or duplicate entries in one list), or the single
-matching entry has no usable `.id`.
+```java
+// Only invoke after approval to remove this address from every list:
+// var future = api.async().ip().firewall().addressList()
+//         .removeByIpAddress("192.0.2.10");
+```
 
-If addresses can appear in several lists, use
-`findByListAndAddress(list, ipAddress)` and verify the resulting ID
-before `remove(id)`. Both convenience methods and manual removal consist
-of separate RouterOS operations; a concurrent change between lookup and
-removal remains possible. Large address lists are transferred in full for
-this safety check. Cancellation cannot undo an already executed deletion.
+The facade reads the entire address-list table without server-side address
+filtering, compares each returned `address` value by **exact string equality**,
+and gathers all matching RouterOS `.id` values. It validates all matching IDs
+**before** issuing the first removal. Matching rows without an ID or with
+duplicate IDs fail with `MikrotikDataException` and do not trigger a remove.
+
+If no entry matches, the method returns `false` without modifying RouterOS.
+Otherwise, it removes each matching ID in order; after all succeed, the
+method returns `true`. This includes duplicates in the *same* list and
+entries in *different* lists. For example, `192.0.2.10` does not match
+`192.0.2.0/24` — there is no subnet inclusion, DNS resolution, or
+address normalization.
+
+**Important:** the removal sequence is **not a RouterOS transaction**.
+A failure or cancellation partway through can leave some entries already
+removed and others still present; no rollback is attempted. On error,
+the operation does not return a successful `boolean`; review the remaining
+entries explicitly before retrying. Concurrent router changes can also
+invalidate an ID after the initial read. The asynchronous variant submits
+individual deletes sequentially and cancellation stops subsequent dispatch
+on a best-effort basis; it cannot undo a deletion already executed.
+
+To delete from **one specific list only**, continue to use
+`findByListAndAddress(list, ipAddress)` followed by `remove(id)` after
+checking the returned IDs. A large router address-list table is transferred
+in full for the cross-list operation.
 
 ## 4. SNMP communities: protect sensitive fields
 
