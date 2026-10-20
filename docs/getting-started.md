@@ -2,7 +2,8 @@
 
 `mikrotik-facade` is a Java 17 library for the classic MikroTik RouterOS binary API. It is a higher-level consumer of `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5`, not an HTTP/REST client.
 
-For more copyable examples across the typed modules, see the [practical Java cookbook](examples.md). The examples use documentation-only IP addresses, synthetic MACs, and environment-provided credentials.
+For examples across the typed modules, see the [practical Java cookbook](examples.md)
+and [advanced cookbook](advanced-cookbook.md). The examples use documentation-only IP addresses, synthetic MACs, and environment-provided credentials.
 
 ## Requirements
 
