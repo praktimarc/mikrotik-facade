@@ -29,7 +29,7 @@ class AddressListRemoveByIpAddressTest {
             f.connection.rows = List.of(
                     row("*B", "other", "192.0.2.11"),
                     row("*A", "blocked", ADDRESS));
-            assertTrue(f.sync.removeByIpAddress(ADDRESS));
+            assertEquals(1, f.sync.removeByIpAddress(ADDRESS));
             assertEquals(List.of(PRINT, "/ip/firewall/address-list/remove .id='*A'"),
                     f.connection.commands);
         }
@@ -39,7 +39,7 @@ class AddressListRemoveByIpAddressTest {
     void noMatchIsNoOpIncludingWhenOnlyContainingCidrExists() throws Exception {
         try (Fixture f = new Fixture()) {
             f.connection.rows = List.of(row("*A", "blocked", "192.0.2.0/24"));
-            assertFalse(f.sync.removeByIpAddress(ADDRESS));
+            assertEquals(0, f.sync.removeByIpAddress(ADDRESS));
             assertEquals(List.of(PRINT), f.connection.commands);
         }
     }
@@ -53,7 +53,7 @@ class AddressListRemoveByIpAddressTest {
                         row("*X", "different", "198.51.100.25"),
                         row("*B", secondList, ADDRESS),
                         row("*C", "third", ADDRESS));
-                assertTrue(f.sync.removeByIpAddress(ADDRESS));
+                assertEquals(3, f.sync.removeByIpAddress(ADDRESS));
                 assertEquals(List.of(
                         PRINT,
                         "/ip/firewall/address-list/remove .id='*A'",
@@ -119,16 +119,16 @@ class AddressListRemoveByIpAddressTest {
     }
 
     @Test
-    void asynchronousUniqueMatchAndAbsenceReturnTrueAndFalse() throws Exception {
+    void asynchronousUniqueMatchAndAbsenceReturnOneAndZero() throws Exception {
         try (Fixture f = new Fixture()) {
             f.connection.rows = List.of(row("*E", "blocked", ADDRESS));
-            assertTrue(f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(1, f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
             assertEquals(List.of(PRINT, "/ip/firewall/address-list/remove .id='*E'"),
                     f.connection.commands);
         }
         try (Fixture f = new Fixture()) {
             f.connection.rows = List.of();
-            assertFalse(f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(0, f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
             assertEquals(List.of(PRINT), f.connection.commands);
         }
     }
@@ -139,7 +139,7 @@ class AddressListRemoveByIpAddressTest {
             f.connection.rows = List.of(row("*A", "first", ADDRESS),
                     row("*X", "not-matched", "192.0.2.11"),
                     row("*B", "second", ADDRESS));
-            assertTrue(f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(2, f.async.removeByIpAddress(ADDRESS).get(3, TimeUnit.SECONDS));
             assertEquals(List.of(PRINT,
                     "/ip/firewall/address-list/remove .id='*A'",
                     "/ip/firewall/address-list/remove .id='*B'"), f.connection.commands);
@@ -226,7 +226,7 @@ class AddressListRemoveByIpAddressTest {
                     row("*C", "target", ADDRESS),
                     row("*D", "target", "192.0.2.11"),
                     row("*E", "TARGET", ADDRESS));
-            assertTrue(f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(2, f.sync.removeByListAndAddress("target", ADDRESS));
             assertEquals(List.of(PRINT,
                     "/ip/firewall/address-list/remove .id='*A'",
                     "/ip/firewall/address-list/remove .id='*C'"), f.connection.commands);
@@ -234,13 +234,13 @@ class AddressListRemoveByIpAddressTest {
     }
 
     @Test
-    void removeByListAndAddressReturnsFalseWhenNoExactListAddressPairExists() throws Exception {
+    void removeByListAndAddressReturnsZeroWhenNoExactListAddressPairExists() throws Exception {
         try (Fixture f = new Fixture()) {
             f.connection.rows = List.of(
                     row("*A", "other", ADDRESS),
                     row("*B", "target", "192.0.2.0/24"),
                     row("*C", "TARGET", ADDRESS));
-            assertFalse(f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(0, f.sync.removeByListAndAddress("target", ADDRESS));
             assertEquals(List.of(PRINT), f.connection.commands);
         }
     }
@@ -274,7 +274,7 @@ class AddressListRemoveByIpAddressTest {
             f.connection.rows = List.of(
                     row("*A", "target", ADDRESS),
                     Map.of("list", "other", "address", ADDRESS));
-            assertTrue(f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(1, f.sync.removeByListAndAddress("target", ADDRESS));
             assertEquals(List.of(PRINT,
                     "/ip/firewall/address-list/remove .id='*A'"), f.connection.commands);
         }
@@ -304,14 +304,14 @@ class AddressListRemoveByIpAddressTest {
                     row("*A", "target", ADDRESS),
                     row("*B", "other", ADDRESS),
                     row("*C", "target", ADDRESS));
-            assertTrue(f.async.removeByListAndAddress("target", ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(2, f.async.removeByListAndAddress("target", ADDRESS).get(3, TimeUnit.SECONDS));
             assertEquals(List.of(PRINT,
                     "/ip/firewall/address-list/remove .id='*A'",
                     "/ip/firewall/address-list/remove .id='*C'"), f.connection.commands);
         }
         try (Fixture f = new Fixture()) {
             f.connection.rows = List.of(row("*A", "other", ADDRESS));
-            assertFalse(f.async.removeByListAndAddress("target", ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(0, f.async.removeByListAndAddress("target", ADDRESS).get(3, TimeUnit.SECONDS));
             assertEquals(List.of(PRINT), f.connection.commands);
         }
     }

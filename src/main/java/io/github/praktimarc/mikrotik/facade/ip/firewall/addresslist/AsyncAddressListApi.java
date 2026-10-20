@@ -103,17 +103,17 @@ public final class AsyncAddressListApi {
      * text, regardless of which RouterOS lists contain it.
      *
      * <p>Reads all entries, prevalidates all matching IDs, then submits
-     * individual removal commands sequentially. The result is {@code false}
-     * if absent or {@code true} when all matching items were removed.
+     * individual removal commands sequentially. The result is {@code 0}
+     * if absent or the number of removed entries when all deletes succeed.
      * A failure or cancellation can leave a partially completed operation;
      * it never rolls back successful removals. Cancelling attempts to cancel
      * the currently pending RouterOS command and prevents subsequent commands
      * from being started after cancellation is observed.</p>
      *
      * @param ipAddress exact RouterOS address text, without normalization
-     * @return cancellable future reporting whether any matches were removed
+     * @return cancellable future containing the count of removed entries
      */
-    public CompletableFuture<Boolean> removeByIpAddress(String ipAddress) {
+    public CompletableFuture<Integer> removeByIpAddress(String ipAddress) {
         return removeMatching(null, AddressListApi.requireIpAddress(ipAddress));
     }
 
@@ -122,20 +122,20 @@ public final class AsyncAddressListApi {
      *
      * <p>Reads the address-list table, checks list and address locally, and
      * validates all matching IDs before issuing sequential deletes.
-     * Returns {@code false} if absent and {@code true} after all matching
+     * Returns {@code 0} if absent and the count when all matching
      * removals succeed. Cancellation or an error can leave some items already
      * deleted; there is no rollback.</p>
      *
      * @param list exact RouterOS list name
      * @param address exact RouterOS address text
-     * @return cancellable future reporting whether any entries were removed
+     * @return cancellable future containing the count of removed entries
      */
-    public CompletableFuture<Boolean> removeByListAndAddress(String list, String address) {
+    public CompletableFuture<Integer> removeByListAndAddress(String list, String address) {
         return removeMatching(AddressListApi.requireListName(list),
                 AddressListApi.requireIpAddress(address));
     }
 
-    private CompletableFuture<Boolean> removeMatching(String list, String address) {
+    private CompletableFuture<Integer> removeMatching(String list, String address) {
         try { lifecycle.ensureOpen(); } catch (MikrotikConnectionException broken) { return failedAsync(broken); }
 
         var result = new AddressRemovalFuture();
@@ -160,7 +160,7 @@ public final class AsyncAddressListApi {
                 return;
             }
             if (ids.isEmpty()) {
-                result.complete(false);
+                result.complete(0);
                 return;
             }
             if (result.isDone()) return;
@@ -183,7 +183,7 @@ public final class AsyncAddressListApi {
             }
             chain.whenComplete((ignored, removalError) -> {
                 if (result.isDone()) return;
-                if (removalError == null) result.complete(true);
+                if (removalError == null) result.complete(ids.size());
                 else result.completeExceptionally(unwrap(removalError));
             });
         });
@@ -195,7 +195,7 @@ public final class AsyncAddressListApi {
                 ? wrapped.getCause() : error;
     }
 
-    private static final class AddressRemovalFuture extends CompletableFuture<Boolean> {
+    private static final class AddressRemovalFuture extends CompletableFuture<Integer> {
         private final AtomicReference<CompletableFuture<?>> active = new AtomicReference<>();
 
         void track(CompletableFuture<?> operation) {
