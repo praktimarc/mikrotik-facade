@@ -62,13 +62,27 @@ public final class RawApi {
      * RouterOS API argument/query words such as {@code ?=base-mac=value}.
      *
      * <p>The connection owns the command correlation tag. This is a powerful
-     * diagnostic interface that can also send configuration mutations.</p>
+     * diagnostic interface that can also send configuration mutations. See the
+     * <a href="https://github.com/praktimarc/mikrotik-facade/blob/main/docs/raw-protocol-words.md">Raw-Words Cookbook</a>
+     * for property selection, query stacking and CAPsMAN diagnostics.</p>
+     *
+     * @param words ordered API words, starting with a command path; exclude the managed tag and terminator
+     * @return immutable normal data rows and terminal completion metadata
+     * @throws MikrotikFacadeException on transport, timeout or RouterOS command failure
+     * @throws IllegalArgumentException for invalid words (including a caller-supplied tag)
      */
     public RawCommandResult words(List<String> words) throws MikrotikFacadeException {
         return executeCommand(RouterOsCommand.fromWireWords(words));
     }
 
-    /** Convenience form of {@link #words(List)} with the command path first. */
+    /**
+     * Convenience form of {@link #words(List)} with the command path first.
+     *
+     * @param path absolute RouterOS command path
+     * @param words additional ordered, complete UTF-8 RouterOS API words
+     * @return immutable raw result with records and terminal completion
+     * @throws MikrotikFacadeException on command failure
+     */
     public RawCommandResult words(String path, String... words) throws MikrotikFacadeException {
         Objects.requireNonNull(words, "words");
         java.util.ArrayList<String> sentence = new java.util.ArrayList<>(words.length + 1);

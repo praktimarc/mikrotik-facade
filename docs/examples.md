@@ -339,5 +339,7 @@ var query = api.raw().words(
 System.out.println(query.records().size());
 ~~~
 
-See [raw protocol words](raw-protocol-words.md). The word-level API requires the
+For property selection, multi-word AND/OR/NOT queries, CAPsMAN comparisons,
+completion metadata, asynchronous calls, and exceptions see the
+[Raw RouterOS API words cookbook](raw-protocol-words.md). This requires the
 published low-level release `mikrotik:3.0.8-praktimarc.5`.

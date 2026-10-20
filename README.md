@@ -95,7 +95,7 @@ production-specific values are included.
 
 ## Documentation
 
-- [Exact RouterOS API words for protocol debugging](docs/raw-protocol-words.md)
+- [Raw RouterOS API words — cookbook (queries, CAPsMAN, async and errors)](docs/raw-protocol-words.md)
 
 - [Getting started, examples and failure semantics](docs/getting-started.md)
 - [Practical Java examples and common workflows](docs/examples.md)
