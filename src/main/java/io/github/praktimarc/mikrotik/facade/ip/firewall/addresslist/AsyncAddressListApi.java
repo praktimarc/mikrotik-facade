@@ -114,7 +114,28 @@ public final class AsyncAddressListApi {
      * @return cancellable future reporting whether any matches were removed
      */
     public CompletableFuture<Boolean> removeByIpAddress(String ipAddress) {
-        String expected = AddressListApi.requireIpAddress(ipAddress);
+        return removeMatching(null, AddressListApi.requireIpAddress(ipAddress));
+    }
+
+    /**
+     * Removes every entry in one list with the exact address value.
+     *
+     * <p>Reads the address-list table, checks list and address locally, and
+     * validates all matching IDs before issuing sequential deletes.
+     * Returns {@code false} if absent and {@code true} after all matching
+     * removals succeed. Cancellation or an error can leave some items already
+     * deleted; there is no rollback.</p>
+     *
+     * @param list exact RouterOS list name
+     * @param address exact RouterOS address text
+     * @return cancellable future reporting whether any entries were removed
+     */
+    public CompletableFuture<Boolean> removeByListAndAddress(String list, String address) {
+        return removeMatching(AddressListApi.requireListName(list),
+                AddressListApi.requireIpAddress(address));
+    }
+
+    private CompletableFuture<Boolean> removeMatching(String list, String address) {
         try { lifecycle.ensureOpen(); } catch (MikrotikConnectionException broken) { return failedAsync(broken); }
 
         var result = new AddressRemovalFuture();
@@ -131,7 +152,9 @@ public final class AsyncAddressListApi {
 
             final List<String> ids;
             try {
-                ids = AddressListApi.idsForIpAddress(expected, entries);
+                ids = list == null
+                        ? AddressListApi.idsForIpAddress(address, entries)
+                        : AddressListApi.idsForListAndAddress(list, address, entries);
             } catch (MikrotikDataException invalidRecord) {
                 result.completeExceptionally(invalidRecord);
                 return;

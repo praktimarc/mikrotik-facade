@@ -123,8 +123,8 @@ public final class AddressListApi {
      * <p>Removal is <strong>not atomic</strong>. If a RouterOS operation fails
      * after some items have been removed, earlier removals remain applied.
      * A concurrent router change can make a previously read ID stale.
-     * To remove only from one particular list, find by list and address and
-     * then use {@link #remove(String)} with the verified item ID.</p>
+     * To remove from a specific list only, use
+     * {@link #removeByListAndAddress(String, String)}.</p>
      *
      * @param ipAddress exact RouterOS address text
      * @return {@code true} if one or more entries were removed,
@@ -135,15 +135,52 @@ public final class AddressListApi {
      * @throws MikrotikFacadeException if a RouterOS operation fails
      */
     public boolean removeByIpAddress(String ipAddress) throws MikrotikFacadeException {
-        String expected = requireIpAddress(ipAddress);
+        return removeMatching(null, requireIpAddress(ipAddress));
+    }
+
+    /**
+     * Removes all entries with an exact list name and address value.
+     *
+     * <p>Like {@link #removeByIpAddress(String)}, this performs an unfiltered
+     * read of all address-list entries, then matches both fields locally
+     * with exact string equality. All matching IDs are validated before
+     * sending any removal command. Multiple matches <em>within the selected
+     * list</em> are all removed; entries in other lists remain unchanged.</p>
+     *
+     * <p>The remove commands are independent, not atomic. If removal fails
+     * partway through, some entries may already have been deleted. No
+     * automatic rollback or retry occurs.</p>
+     *
+     * @param list exact RouterOS address-list name
+     * @param address exact RouterOS address text (no CIDR inclusion or normalization)
+     * @return {@code true} after all matching entries were removed,
+     *         {@code false} if no entries matched
+     * @throws IllegalArgumentException if either argument is blank
+     * @throws MikrotikDataException if a matching entry has no ID or IDs are duplicated
+     * @throws MikrotikFacadeException if reading or removing entries fails
+     */
+    public boolean removeByListAndAddress(String list, String address)
+            throws MikrotikFacadeException {
+        return removeMatching(requireListName(list), requireIpAddress(address));
+    }
+
+    private boolean removeMatching(String list, String address) throws MikrotikFacadeException {
         lifecycle.ensureOpen();
         List<AddressListEntry> entries = engine.executeSync(
                 findOperation(RouterOsProperties.builder().build(), mapper));
-        List<String> ids = idsForIpAddress(expected, entries);
+        List<String> ids = idsForAddressAndList(list, address, entries);
         for (String id : ids) {
             engine.executeSync(removeOperation(id));
         }
         return !ids.isEmpty();
+    }
+
+    static String requireListName(String list) {
+        Objects.requireNonNull(list, "list");
+        if (list.isBlank()) {
+            throw new IllegalArgumentException("list must not be blank");
+        }
+        return list;
     }
 
     static String requireIpAddress(String ipAddress) {
@@ -156,11 +193,24 @@ public final class AddressListApi {
 
     static List<String> idsForIpAddress(String ipAddress, List<AddressListEntry> entries)
             throws MikrotikDataException {
-        String expected = requireIpAddress(ipAddress);
+        return idsForAddressAndList(null, ipAddress, entries);
+    }
+
+    static List<String> idsForListAndAddress(
+            String list, String address, List<AddressListEntry> entries)
+            throws MikrotikDataException {
+        return idsForAddressAndList(requireListName(list), address, entries);
+    }
+
+    private static List<String> idsForAddressAndList(
+            String list, String address, List<AddressListEntry> entries)
+            throws MikrotikDataException {
+        String expectedAddress = requireIpAddress(address);
         Objects.requireNonNull(entries, "entries");
         java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>();
         for (AddressListEntry entry : entries) {
-            if (!entry.address().map(expected::equals).orElse(false)) {
+            if (!entry.address().map(expectedAddress::equals).orElse(false)
+                    || (list != null && !entry.list().map(list::equals).orElse(false))) {
                 continue;
             }
             String id = entry.id().filter(value -> !value.isBlank()).orElseThrow(
