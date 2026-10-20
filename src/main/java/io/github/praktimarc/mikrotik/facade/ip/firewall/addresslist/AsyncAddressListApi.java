@@ -2,6 +2,7 @@ package io.github.praktimarc.mikrotik.facade.ip.firewall.addresslist;
 
 import io.github.praktimarc.mikrotik.facade.RouterOsProperties;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
 import io.github.praktimarc.mikrotik.facade.ip.firewall.addresslist.internal.AddressListEntryMapper;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
@@ -11,6 +12,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Asynchronous mirror of the RouterOS firewall address-list facade. */
 public final class AsyncAddressListApi {
@@ -93,6 +96,82 @@ public final class AsyncAddressListApi {
     public CompletableFuture<Void> remove(String id) {
         try { lifecycle.ensureOpen(); } catch (MikrotikConnectionException broken) { return failedAsync(broken); }
         return engine.executeAsync(AddressListApi.removeOperation(id));
+    }
+
+    /**
+     * Asynchronously removes the single address-list entry with exactly this address.
+     *
+     * <p>The operation reads all entries, locally checks for a unique match,
+     * then removes by RouterOS {@code .id}. It returns {@code false} when absent,
+     * and fails if the address appears more than once or has no usable ID.
+     * Cancelling the future attempts to cancel the current RouterOS command;
+     * cancellation cannot roll back a remove that has already executed.</p>
+     *
+     * @param ipAddress exact RouterOS address text, without normalization
+     * @return future resolving to {@code true} if removed, {@code false} if absent
+     */
+    public CompletableFuture<Boolean> removeByIpAddress(String ipAddress) {
+        String expected = AddressListApi.requireIpAddress(ipAddress);
+        try { lifecycle.ensureOpen(); } catch (MikrotikConnectionException broken) { return failedAsync(broken); }
+
+        var result = new AddressRemovalFuture();
+        CompletableFuture<List<AddressListEntry>> lookup = engine.executeAsync(
+                AddressListApi.findOperation(RouterOsProperties.builder().build(), mapper));
+        result.track(lookup);
+
+        lookup.whenComplete((entries, lookupError) -> {
+            if (result.isDone()) return;
+            if (lookupError != null) {
+                result.completeExceptionally(unwrap(lookupError));
+                return;
+            }
+
+            final Optional<String> id;
+            try {
+                id = AddressListApi.uniqueIdForIpAddress(expected, entries);
+            } catch (MikrotikDataException ambiguousOrMissingId) {
+                result.completeExceptionally(ambiguousOrMissingId);
+                return;
+            }
+            if (id.isEmpty()) {
+                result.complete(false);
+                return;
+            }
+            if (result.isDone()) return;
+
+            CompletableFuture<Void> removal = engine.executeAsync(
+                    AddressListApi.removeOperation(id.orElseThrow()));
+            result.track(removal);
+            removal.whenComplete((ignored, removeError) -> {
+                if (removeError == null) result.complete(true);
+                else result.completeExceptionally(unwrap(removeError));
+            });
+        });
+        return result;
+    }
+
+    private static Throwable unwrap(Throwable error) {
+        return error instanceof CompletionException wrapped && wrapped.getCause() != null
+                ? wrapped.getCause() : error;
+    }
+
+    private static final class AddressRemovalFuture extends CompletableFuture<Boolean> {
+        private final AtomicReference<CompletableFuture<?>> active = new AtomicReference<>();
+
+        void track(CompletableFuture<?> operation) {
+            active.set(operation);
+            if (isCancelled()) operation.cancel(true);
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            boolean cancelled = super.cancel(false);
+            if (cancelled) {
+                CompletableFuture<?> current = active.get();
+                if (current != null) current.cancel(mayInterruptIfRunning);
+            }
+            return cancelled;
+        }
     }
 
     private <T> CompletableFuture<T> failedAsync(MikrotikConnectionException failure) {

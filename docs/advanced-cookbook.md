@@ -249,6 +249,42 @@ do not perform a second identity lookup, provide rollback, or guarantee
 that a dynamic/expired entry can be updated or deleted. RouterOS may
 change state between the read and the write.
 
+### Remove by IP address when the match is unambiguous
+
+For ordinary host-address entries, the convenience method can look up the
+RouterOS item ID and remove it automatically. The parameter remains a
+`String`, since RouterOS also represents `address` as a string.
+
+```java
+boolean approvedForTestRouter = false;
+
+if (approvedForTestRouter) {
+    boolean removed = api.ip().firewall().addressList()
+            .removeByIpAddress("192.0.2.10");
+    System.out.println("Removed exactly one entry: " + removed);
+}
+```
+
+The asynchronous equivalent is
+`api.async().ip().firewall().addressList().removeByIpAddress("192.0.2.10")`
+and returns `CompletableFuture<Boolean>`.
+
+The facade deliberately reads all address-list entries without a server-side
+address filter, checks the `address` field locally using **exact string
+comparison** and removes by `.id` only when there is exactly one match.
+This means `192.0.2.10` does not match `192.0.2.0/24`; there is no DNS or
+IP normalization. It returns `false` if absent and throws
+`MikrotikDataException` without removing anything if the address appears
+in multiple lists (or duplicate entries in one list), or the single
+matching entry has no usable `.id`.
+
+If addresses can appear in several lists, use
+`findByListAndAddress(list, ipAddress)` and verify the resulting ID
+before `remove(id)`. Both convenience methods and manual removal consist
+of separate RouterOS operations; a concurrent change between lookup and
+removal remains possible. Large address lists are transferred in full for
+this safety check. Cancellation cannot undo an already executed deletion.
+
 ## 4. SNMP communities: protect sensitive fields
 
 ```java
