@@ -20,6 +20,7 @@ import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.diagnostic.FacadeDiagnostics;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.internal.stream.StreamRegistry;
+import io.github.praktimarc.mikrotik.facade.internal.stream.RawWordStreams;
 import io.github.praktimarc.mikrotik.facade.queue.AsyncQueueApi;
 import io.github.praktimarc.mikrotik.facade.queue.QueueApi;
 import io.github.praktimarc.mikrotik.facade.raw.AsyncRawApi;
@@ -61,6 +62,7 @@ public final class MikrotikRtrApi implements AutoCloseable {
     private final FacadeDiagnostics diagnostics;
     private final CapabilityRegistry capabilityRegistry;
     private final StreamRegistry streamRegistry;
+    private final RawWordStreams rawWordStreams;
     private final FileDownloadExecutor fileDownloadExecutor;
     private final RawApi raw;
     private final IpApi ip;
@@ -110,7 +112,9 @@ public final class MikrotikRtrApi implements AutoCloseable {
         this.fileDownloadExecutor=new FileDownloadExecutor(callbackExecutor,daemonThreadFactory("mikrotik-facade-download-"+session));
         this.capabilityRegistry=new CapabilityRegistry(diagnostics);
         this.streamRegistry=new StreamRegistry();
-        this.raw=new RawApi(commandEngine,lifecycle);
+        this.rawWordStreams=new RawWordStreams(
+                connection,lifecycle,dispatchExecutor,callbackExecutor,streamRegistry);
+        this.raw=new RawApi(commandEngine,lifecycle,rawWordStreams);
         this.ip=new IpApi(commandEngine,lifecycle);
         this.wifi=new WifiApi(commandEngine,lifecycle,environment,capabilityRegistry);
         this.interfaces=new InterfacesApi(connection,commandEngine,lifecycle,dispatchExecutor,callbackExecutor,streamRegistry);
@@ -119,7 +123,7 @@ public final class MikrotikRtrApi implements AutoCloseable {
         this.pingApi=new PingApi(commandEngine,lifecycle);
         this.file=new FileApi(connection,commandEngine,lifecycle);
         this.async=new AsyncMikrotikRtrApi(
-                new AsyncRawApi(commandEngine,lifecycle,callbackExecutor),
+                new AsyncRawApi(commandEngine,lifecycle,callbackExecutor,rawWordStreams),
                 new AsyncIpApi(commandEngine,lifecycle,callbackExecutor),
                 new AsyncWifiApi(commandEngine,lifecycle,callbackExecutor,environment,capabilityRegistry),
                 new AsyncInterfacesApi(commandEngine,lifecycle,callbackExecutor),

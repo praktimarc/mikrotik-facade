@@ -96,6 +96,7 @@ production-specific values are included.
 ## Documentation
 
 - [Raw RouterOS API words — cookbook (queries, CAPsMAN, async and errors)](docs/raw-protocol-words.md)
+- [Raw RouterOS continuous streaming (`follow`, `listen`, cancellation)](docs/raw-streaming.md)
 
 - [Getting started, examples and failure semantics](docs/getting-started.md)
 - [Practical Java examples and common workflows](docs/examples.md)

@@ -5,6 +5,9 @@ import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
+import io.github.praktimarc.mikrotik.facade.internal.stream.RawWordStreams;
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
+import java.util.concurrent.Flow;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,6 +19,7 @@ public final class RawApi {
 
     private final CommandEngine engine;
     private final SessionLifecycle lifecycle;
+    private final RawWordStreams rawWordStreams;
 
     /**
      * Creates the raw API for session wiring.
@@ -26,8 +30,14 @@ public final class RawApi {
      * @param lifecycle shared session lifecycle
      */
     public RawApi(CommandEngine engine, SessionLifecycle lifecycle) {
+        this(engine, lifecycle, null);
+    }
+
+    /** Constructor for fully wired facade sessions, including raw streaming. */
+    public RawApi(CommandEngine engine, SessionLifecycle lifecycle, RawWordStreams rawWordStreams) {
         this.engine = Objects.requireNonNull(engine, "engine");
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
+        this.rawWordStreams = rawWordStreams;
     }
 
     /**
@@ -89,6 +99,44 @@ public final class RawApi {
         sentence.add(path);
         java.util.Collections.addAll(sentence, words);
         return words(sentence);
+    }
+
+    /**
+     * Creates a cold stream of normal RouterOS {@code !re} replies for complete
+     * protocol words. Supports long-lived {@code /listen} or {@code print follow}
+     * commands where RouterOS implements them. Words are forwarded unmodified.
+     *
+     * <p>Each subscription starts a separate tagged operation; calling
+     * {@code subscription.cancel()} sends a best-effort RouterOS /cancel.
+     * The session's normal finite command timeout does not apply. Each
+     * subscription has a bounded buffer and signals backpressure overflow
+     * instead of discarding data silently. On cancellation, Flow does not
+     * guarantee a terminal callback.</p>
+     *
+     * <p>Never pass a manually supplied {@code .tag=} word. Use only trusted
+     * commands; this method can stream mutating operations too.</p>
+     *
+     * @param words complete native RouterOS API sentence
+     * @return cold publisher of unmodified, immutable response records
+     * @throws MikrotikConnectionException when the session is broken
+     * @throws IllegalArgumentException for invalid native words
+     */
+    public Flow.Publisher<RouterOsRecord> streamWords(List<String> words)
+            throws MikrotikConnectionException {
+        if (rawWordStreams == null) {
+            throw new IllegalStateException("Raw streaming requires a fully wired facade session");
+        }
+        return rawWordStreams.streamWords(words);
+    }
+
+    /** Convenience form of {@link #streamWords(List)} with the command path first. */
+    public Flow.Publisher<RouterOsRecord> streamWords(String path, String... words)
+            throws MikrotikConnectionException {
+        Objects.requireNonNull(words, "words");
+        java.util.ArrayList<String> sentence = new java.util.ArrayList<>(words.length + 1);
+        sentence.add(path);
+        java.util.Collections.addAll(sentence, words);
+        return streamWords(sentence);
     }
 
     RawCommandResult executeCommand(RouterOsCommand command) throws MikrotikFacadeException {

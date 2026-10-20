@@ -5,6 +5,8 @@ import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionExceptio
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
 import io.github.praktimarc.mikrotik.facade.internal.command.RouterOsCommand;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
+import io.github.praktimarc.mikrotik.facade.internal.stream.RawWordStreams;
+import java.util.concurrent.Flow;
 
 import java.util.List;
 import java.util.Objects;
@@ -19,6 +21,7 @@ public final class AsyncRawApi {
     private final CommandEngine engine;
     private final SessionLifecycle lifecycle;
     private final Executor callbackExecutor;
+    private final RawWordStreams rawWordStreams;
 
     /**
      * Creates the asynchronous raw API for session wiring.
@@ -34,9 +37,17 @@ public final class AsyncRawApi {
             CommandEngine engine,
             SessionLifecycle lifecycle,
             Executor callbackExecutor) {
+        this(engine, lifecycle, callbackExecutor, null);
+    }
+
+    /** Constructor for fully wired session-scoped finite and streaming raw APIs. */
+    public AsyncRawApi(
+            CommandEngine engine, SessionLifecycle lifecycle,
+            Executor callbackExecutor, RawWordStreams rawWordStreams) {
         this.engine = Objects.requireNonNull(engine, "engine");
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         this.callbackExecutor = Objects.requireNonNull(callbackExecutor, "callbackExecutor");
+        this.rawWordStreams = rawWordStreams;
     }
 
     /**
@@ -95,6 +106,32 @@ public final class AsyncRawApi {
         sentence.add(path);
         java.util.Collections.addAll(sentence, words);
         return words(sentence);
+    }
+
+    /**
+     * Mirror of {@link RawApi#streamWords(List)}. The returned Publisher
+     * already runs asynchronously and is not a CompletableFuture.
+     *
+     * @param words complete native RouterOS protocol words
+     * @return cold tagged stream with per-subscription cancellation
+     * @throws MikrotikConnectionException if the session has failed
+     */
+    public Flow.Publisher<RouterOsRecord> streamWords(List<String> words)
+            throws MikrotikConnectionException {
+        if (rawWordStreams == null) {
+            throw new IllegalStateException("Raw streaming requires a fully wired facade session");
+        }
+        return rawWordStreams.streamWords(words);
+    }
+
+    /** Convenience form of {@link #streamWords(List)} with path first. */
+    public Flow.Publisher<RouterOsRecord> streamWords(String path, String... words)
+            throws MikrotikConnectionException {
+        Objects.requireNonNull(words, "words");
+        java.util.ArrayList<String> sentence = new java.util.ArrayList<>(words.length + 1);
+        sentence.add(path);
+        java.util.Collections.addAll(sentence, words);
+        return streamWords(sentence);
     }
 
     CompletableFuture<RawCommandResult> executeCommand(RouterOsCommand command) {

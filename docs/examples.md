@@ -346,5 +346,7 @@ System.out.println(query.records().size());
 
 For property selection, multi-word AND/OR/NOT queries, CAPsMAN comparisons,
 completion metadata, asynchronous calls, and exceptions see the
-[Raw RouterOS API words cookbook](raw-protocol-words.md). This requires the
+[Raw RouterOS API words cookbook](raw-protocol-words.md). For continuous
+RouterOS `follow` / `listen` streams, use the [Raw-Streaming guide](raw-streaming.md).
+This requires the
 published low-level release `mikrotik:3.0.8-praktimarc.5`.
