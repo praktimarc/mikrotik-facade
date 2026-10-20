@@ -216,6 +216,151 @@ class AddressListRemoveByIpAddressTest {
         }
     }
 
+
+    @Test
+    void removeByListAndAddressOnlyAffectsSpecifiedListIncludingDuplicateRows() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    row("*B", "other", ADDRESS),
+                    row("*C", "target", ADDRESS),
+                    row("*D", "target", "192.0.2.11"),
+                    row("*E", "TARGET", ADDRESS));
+            assertTrue(f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(List.of(PRINT,
+                    "/ip/firewall/address-list/remove .id='*A'",
+                    "/ip/firewall/address-list/remove .id='*C'"), f.connection.commands);
+        }
+    }
+
+    @Test
+    void removeByListAndAddressReturnsFalseWhenNoExactListAddressPairExists() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "other", ADDRESS),
+                    row("*B", "target", "192.0.2.0/24"),
+                    row("*C", "TARGET", ADDRESS));
+            assertFalse(f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+    }
+
+    @Test
+    void removeByListAndAddressRejectsInvalidArgumentsWithoutRouterCommunication() throws Exception {
+        try (Fixture f = new Fixture()) {
+            assertThrows(NullPointerException.class,
+                    () -> f.sync.removeByListAndAddress(null, ADDRESS));
+            assertThrows(IllegalArgumentException.class,
+                    () -> f.sync.removeByListAndAddress("  ", ADDRESS));
+            assertThrows(NullPointerException.class,
+                    () -> f.sync.removeByListAndAddress("target", null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> f.sync.removeByListAndAddress("target", "\t"));
+            assertThrows(NullPointerException.class,
+                    () -> f.async.removeByListAndAddress(null, ADDRESS));
+            assertThrows(IllegalArgumentException.class,
+                    () -> f.async.removeByListAndAddress(" ", ADDRESS));
+            assertThrows(NullPointerException.class,
+                    () -> f.async.removeByListAndAddress("target", null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> f.async.removeByListAndAddress("target", " "));
+            assertTrue(f.connection.commands.isEmpty());
+        }
+    }
+
+    @Test
+    void removeByListAndAddressPrevalidatesSelectedIdsButIgnoresUnselectedInvalidRows() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    Map.of("list", "other", "address", ADDRESS));
+            assertTrue(f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(List.of(PRINT,
+                    "/ip/firewall/address-list/remove .id='*A'"), f.connection.commands);
+        }
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    Map.of("list", "target", "address", ADDRESS),
+                    row("*B", "other", ADDRESS));
+            assertThrows(MikrotikDataException.class,
+                    () -> f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    row("*A", "target", ADDRESS));
+            assertThrows(MikrotikDataException.class,
+                    () -> f.sync.removeByListAndAddress("target", ADDRESS));
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+    }
+
+    @Test
+    void asynchronousRemoveByListAndAddressRemovesEveryMatchInSelectedListOnly() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    row("*B", "other", ADDRESS),
+                    row("*C", "target", ADDRESS));
+            assertTrue(f.async.removeByListAndAddress("target", ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(List.of(PRINT,
+                    "/ip/firewall/address-list/remove .id='*A'",
+                    "/ip/firewall/address-list/remove .id='*C'"), f.connection.commands);
+        }
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(row("*A", "other", ADDRESS));
+            assertFalse(f.async.removeByListAndAddress("target", ADDRESS).get(3, TimeUnit.SECONDS));
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+    }
+
+    @Test
+    void asynchronousRemoveByListAndAddressRejectsMissingIdsAndStopsOnRemovalFailure() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    Map.of("list", "target", "address", ADDRESS));
+            var failure = assertThrows(java.util.concurrent.ExecutionException.class,
+                    () -> f.async.removeByListAndAddress("target", ADDRESS)
+                            .get(3, TimeUnit.SECONDS));
+            assertInstanceOf(MikrotikDataException.class, failure.getCause());
+            assertEquals(List.of(PRINT), f.connection.commands);
+        }
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    row("*B", "target", ADDRESS),
+                    row("*C", "target", ADDRESS));
+            f.connection.failRemoveId = "*B";
+            assertThrows(java.util.concurrent.ExecutionException.class,
+                    () -> f.async.removeByListAndAddress("target", ADDRESS)
+                            .get(3, TimeUnit.SECONDS));
+            assertEquals(List.of(PRINT,
+                    "/ip/firewall/address-list/remove .id='*A'",
+                    "/ip/firewall/address-list/remove .id='*B'"), f.connection.commands);
+        }
+    }
+
+    @Test
+    void cancellingPendingListScopedRemovalPreventsFurtherDeletes() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.connection.rows = List.of(
+                    row("*A", "target", ADDRESS),
+                    row("*B", "target", ADDRESS),
+                    row("*C", "other", ADDRESS));
+            f.connection.deferRemoveId = "*A";
+            var result = f.async.removeByListAndAddress("target", ADDRESS);
+            assertEquals(List.of(PRINT, "/ip/firewall/address-list/remove .id='*A'"),
+                    f.connection.commands);
+            assertTrue(result.cancel(true));
+            f.connection.pendingRemove.completed();
+            assertEquals(List.of(PRINT, "/ip/firewall/address-list/remove .id='*A'"),
+                    f.connection.commands);
+        }
+    }
+
     private static Map<String, String> row(String id, String list, String address) {
         return Map.of(".id", id, "list", list, "address", address);
     }

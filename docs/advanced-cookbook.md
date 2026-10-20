@@ -297,10 +297,45 @@ invalidate an ID after the initial read. The asynchronous variant submits
 individual deletes sequentially and cancellation stops subsequent dispatch
 on a best-effort basis; it cannot undo a deletion already executed.
 
-To delete from **one specific list only**, continue to use
-`findByListAndAddress(list, ipAddress)` followed by `remove(id)` after
-checking the returned IDs. A large router address-list table is transferred
-in full for the cross-list operation.
+### Remove only from a specified list
+
+`removeByListAndAddress(String list, String address)` is the list-scoped
+counterpart. It removes **all** entries for the exact list/address pair,
+including duplicate entries within that list, but **never** entries from
+other lists.
+
+```java
+boolean approvedForTestRouter = false;
+
+if (approvedForTestRouter) {
+    boolean removed = api.ip().firewall().addressList()
+            .removeByListAndAddress("example-list", "192.0.2.10");
+    System.out.println("At least one entry removed in selected list: " + removed);
+}
+```
+
+The asynchronous variant returns `CompletableFuture<Boolean>`:
+
+```java
+// Only invoke with authorization to delete from the given list:
+// var future = api.async().ip().firewall().addressList()
+//         .removeByListAndAddress("example-list", "192.0.2.10");
+```
+
+Both fields are checked locally with **exact string equality**. The facade
+reads the complete table without relying on server-side filtering,
+prevalidates **all matching** RouterOS IDs, then removes matching items
+sequentially. A matching row without an ID or with a duplicated ID makes
+the operation fail **before** any deletion. Unrelated rows in other lists
+are not removal targets, even when they have the same address.
+
+As with `removeByIpAddress`, the method returns `false` when no entry
+matches, and `true` after all matching entries have been removed.
+It does not perform a transaction. If a removal fails or the operation is
+cancelled partway through, earlier deletions are not rolled back.
+Large address-list tables are transferred in full for both methods.
+For removal of one specifically chosen record, use
+`findByListAndAddress(...)` and verify the item before `remove(id)`.
 
 ## 4. SNMP communities: protect sensitive fields
 
