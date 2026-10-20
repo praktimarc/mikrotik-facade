@@ -2,6 +2,7 @@ package io.github.praktimarc.mikrotik.facade.ip.firewall.addresslist;
 
 import io.github.praktimarc.mikrotik.facade.RouterOsProperties;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikFacadeException;
+import io.github.praktimarc.mikrotik.facade.exception.MikrotikDataException;
 import io.github.praktimarc.mikrotik.facade.ip.firewall.addresslist.internal.AddressListEntryMapper;
 import io.github.praktimarc.mikrotik.facade.ip.firewall.internal.FirewallOperations;
 import io.github.praktimarc.mikrotik.facade.internal.command.CommandEngine;
@@ -106,6 +107,70 @@ public final class AddressListApi {
     public void remove(String id) throws MikrotikFacadeException {
         lifecycle.ensureOpen();
         engine.executeSync(removeOperation(id));
+    }
+
+    /**
+     * Removes an address-list entry matching exactly the supplied RouterOS {@code address} value.
+     *
+     * <p>This convenience method first reads <em>all</em> address-list entries without
+     * relying on potentially unreliable server-side equality filtering.
+     * It compares the returned address strings exactly (no DNS lookup, CIDR inclusion,
+     * or IP normalization). If no entry matches, no command is sent and {@code false}
+     * is returned. If more than one entry matches, it fails without deleting anything:
+     * the same address can occur in multiple RouterOS lists.</p>
+     *
+     * <p>For an ambiguous address, call {@link #findByListAndAddress(String, String)}
+     * and then {@link #remove(String)} with a verified RouterOS {@code .id}.
+     * The read and remove are separate non-atomic commands; a stale ID or
+     * connection failure can still make removal fail.</p>
+     *
+     * @param ipAddress exact address text as stored in RouterOS
+     * @return {@code true} if one matching entry was removed, {@code false} if none existed
+     * @throws IllegalArgumentException if the address is blank
+     * @throws MikrotikDataException if multiple entries match or the target has no usable item ID
+     * @throws MikrotikFacadeException if a RouterOS operation fails
+     */
+    public boolean removeByIpAddress(String ipAddress) throws MikrotikFacadeException {
+        String expected = requireIpAddress(ipAddress);
+        lifecycle.ensureOpen();
+        List<AddressListEntry> entries = engine.executeSync(
+                findOperation(RouterOsProperties.builder().build(), mapper));
+        Optional<String> id = uniqueIdForIpAddress(expected, entries);
+        if (id.isEmpty()) {
+            return false;
+        }
+        engine.executeSync(removeOperation(id.orElseThrow()));
+        return true;
+    }
+
+    static String requireIpAddress(String ipAddress) {
+        Objects.requireNonNull(ipAddress, "ipAddress");
+        if (ipAddress.isBlank()) {
+            throw new IllegalArgumentException("ipAddress must not be blank");
+        }
+        return ipAddress;
+    }
+
+    static Optional<String> uniqueIdForIpAddress(String ipAddress, List<AddressListEntry> entries)
+            throws MikrotikDataException {
+        String expected = requireIpAddress(ipAddress);
+        Objects.requireNonNull(entries, "entries");
+        AddressListEntry match = null;
+        for (AddressListEntry entry : entries) {
+            if (!entry.address().map(expected::equals).orElse(false)) {
+                continue;
+            }
+            if (match != null) {
+                throw new MikrotikDataException(
+                        "Multiple address-list entries have the same address; select a list and item ID");
+            }
+            match = entry;
+        }
+        if (match == null) {
+            return Optional.empty();
+        }
+        return Optional.of(match.id().filter(id -> !id.isBlank()).orElseThrow(
+                () -> new MikrotikDataException("Matching address-list entry has no RouterOS item ID")));
     }
 
     static RouterOsOperation<List<AddressListEntry>> findOperation(RouterOsProperties queries, AddressListEntryMapper mapper) {
