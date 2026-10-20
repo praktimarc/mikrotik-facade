@@ -27,6 +27,20 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 The facade pins `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5`, the signed low-level release with exact RouterOS protocol-word support. Maven resolves it from the standard Maven Central repository, without a custom repository, publishing credentials, `systemPath`, checked-in JAR or local snapshot installation. The facade itself remains an unreleased `0.1.0-SNAPSHOT`.
 
 
+## Build outputs and Eclipse/Ant distribution
+
+Every normal `mvn -U clean package`, `verify` or `install` creates
+three facade JARs in `target/` (binary, `-sources` and `-javadoc`) and
+a ready-to-unpack `target/mikrotik-facade-0.1.0-SNAPSHOT-dist.zip`.
+The ZIP contains `lib/` with the facade and its runtime dependencies, and
+`sources/` and `javadoc/` with both facade and low-level attachments.
+
+For non-Maven Eclipse/Ant projects, replace old runtime JARs with the files
+from `lib/`. Set the two IDE attachments once using the archive's
+`sources/` and `javadoc/` folders; see
+[distribution and Eclipse setup](docs/distribution.md).
+Source/Javadoc JARs are **not** required in the runtime classpath or WAR.
+
 ## Quick start
 
 This is a Java 17 library for the **classic RouterOS binary API**, not REST.
