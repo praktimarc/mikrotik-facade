@@ -45,11 +45,24 @@ public final class RawWordStreams {
      */
     public Flow.Publisher<RouterOsRecord> streamWords(List<String> words)
             throws MikrotikConnectionException {
+        return streamMappedWords(words, "stream exact RouterOS API words", record -> record);
+    }
+
+    /**
+     * Creates a cold, session-managed typed stream using the same native-word
+     * transport, bounded buffer, cancellation and lifecycle as raw streaming.
+     * Mapping runs in the normal Flow delivery lane, not in RouterOS I/O callbacks.
+     */
+    public <T> Flow.Publisher<T> streamMappedWords(
+            List<String> words, String operation, RouterOsPublisher.RecordMapper<T> mapper)
+            throws MikrotikConnectionException {
         RouterOsCommand command = RouterOsCommand.fromWireWords(words);
         lifecycle.ensureOpen();
-        RouterOsPublisher<RouterOsRecord> delegate = new RouterOsPublisher<>(
-                connection, "stream exact RouterOS API words", command,
-                QUEUE_CAPACITY, dispatchExecutor, callbackExecutor, record -> record);
+        Objects.requireNonNull(operation, "operation");
+        Objects.requireNonNull(mapper, "mapper");
+        RouterOsPublisher<T> delegate = new RouterOsPublisher<>(
+                connection, operation, command,
+                QUEUE_CAPACITY, dispatchExecutor, callbackExecutor, mapper);
 
         return subscriber -> {
             Objects.requireNonNull(subscriber, "subscriber");

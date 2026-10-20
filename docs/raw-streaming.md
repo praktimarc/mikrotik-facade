@@ -13,6 +13,10 @@ operations return collected results, while a stream delivers records
 incrementally and may continue indefinitely. The latter is implemented as
 Java 17 `Flow.Publisher<RouterOsRecord>`.
 
+For typed log entries with split topics and preserved RouterOS timestamps,
+use the [typed Log API guide](log-streaming.md) and
+`api.log().follow()` / `api.log().followOnly()`.
+
 ## Start a live log
 
 ```java

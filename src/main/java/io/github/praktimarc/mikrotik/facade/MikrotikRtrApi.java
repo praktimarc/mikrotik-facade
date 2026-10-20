@@ -13,6 +13,7 @@ import io.github.praktimarc.mikrotik.facade.file.AsyncFileApi;
 import io.github.praktimarc.mikrotik.facade.file.FileApi;
 import io.github.praktimarc.mikrotik.facade.file.internal.FileDownloadExecutor;
 import io.github.praktimarc.mikrotik.facade.exception.MikrotikConnectionException;
+import io.github.praktimarc.mikrotik.facade.log.LogApi;
 import io.github.praktimarc.mikrotik.facade.interfaces.AsyncInterfacesApi;
 import io.github.praktimarc.mikrotik.facade.interfaces.InterfacesApi;
 import io.github.praktimarc.mikrotik.facade.internal.capability.CapabilityRegistry;
@@ -65,6 +66,7 @@ public final class MikrotikRtrApi implements AutoCloseable {
     private final RawWordStreams rawWordStreams;
     private final FileDownloadExecutor fileDownloadExecutor;
     private final RawApi raw;
+    private final LogApi log;
     private final IpApi ip;
     private final WifiApi wifi;
     private final InterfacesApi interfaces;
@@ -115,6 +117,7 @@ public final class MikrotikRtrApi implements AutoCloseable {
         this.rawWordStreams=new RawWordStreams(
                 connection,lifecycle,dispatchExecutor,callbackExecutor,streamRegistry);
         this.raw=new RawApi(commandEngine,lifecycle,rawWordStreams);
+        this.log=new LogApi(rawWordStreams);
         this.ip=new IpApi(commandEngine,lifecycle);
         this.wifi=new WifiApi(commandEngine,lifecycle,environment,capabilityRegistry);
         this.interfaces=new InterfacesApi(connection,commandEngine,lifecycle,dispatchExecutor,callbackExecutor,streamRegistry);
@@ -137,6 +140,8 @@ public final class MikrotikRtrApi implements AutoCloseable {
     public static MikrotikRtrApiBuilder builder(){return new MikrotikRtrApiBuilder();}
     public RouterOsEnvironment environment(){return environment;}
     public RawApi raw(){return raw;}
+    /** Returns the typed RouterOS live log streaming API. */
+    public LogApi log(){return log;}
     /** Returns the RouterOS /ip API. */
     public IpApi ip(){return ip;}
     /** Returns the compatibility-aware typed WiFi/CAPsMAN API.
