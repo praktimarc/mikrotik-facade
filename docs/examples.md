@@ -8,6 +8,11 @@ binary API**, not REST.
 Most snippets are read-only. Operations that can change a router are separated and
 explicitly marked.
 
+For the complete typed API workflows (Firewall mutations, SNMP changes, DHCP
+Option 82, IP pools, PCQ, monitoring and error handling), continue with the
+[advanced facade cookbook](advanced-cookbook.md). The
+[API coverage inventory](api-coverage.md) tracks current public modules.
+
 ## 1. Build and add the dependency
 
 The facade is currently **`0.1.0-SNAPSHOT`**, built from this repository; it is **not

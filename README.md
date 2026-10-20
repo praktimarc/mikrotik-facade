@@ -99,6 +99,8 @@ production-specific values are included.
 
 - [Getting started, examples and failure semantics](docs/getting-started.md)
 - [Practical Java examples and common workflows](docs/examples.md)
+- [Advanced Java cookbook: all typed modules and guarded writes](docs/advanced-cookbook.md)
+- [Public API documentation coverage and CI gate](docs/api-coverage.md)
 - [Release-readiness and remaining gates](docs/release-readiness.md)
 - [RouterOS compatibility catalog](docs/routeros-compatibility.md)
 - [Architecture and execution model](docs/architecture.md)
