@@ -110,6 +110,10 @@ Typed equality-based reads additionally validate returned raw property values lo
 
 Raw commands can mutate configuration: treat inputs as trusted, apply router-side permissions, and do not log command arguments or credentials. The facade's diagnostics deliberately redact sensitive values.
 
+For exact, unparsed RouterOS binary API words and examples of query-stack operations,
+CAPsMAN comparisons, property selection, asynchronous calls and error handling,
+see the [Raw-Words Cookbook](raw-protocol-words.md).
+
 ## Continuous interface monitoring with Flow
 
 `interfaces().monitor("ether1")` is a cold `Flow.Publisher`: monitoring begins on subscription, not construction. Subscribers control demand and must cancel when they no longer need samples:

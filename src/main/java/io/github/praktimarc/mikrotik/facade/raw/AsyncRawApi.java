@@ -68,12 +68,27 @@ public final class AsyncRawApi {
         return new RawCommandBuilder.Async(this, commandPath);
     }
 
-    /** Executes exact RouterOS API words asynchronously on the existing session. */
+    /**
+     * Executes exact RouterOS API words asynchronously on the existing session.
+     *
+     * <p>See the <a href="https://github.com/praktimarc/mikrotik-facade/blob/main/docs/raw-protocol-words.md">Raw-Words Cookbook</a>
+     * for query syntax, result handling, command timeout versus local wait timeout,
+     * and best-effort cancellation.</p>
+     *
+     * @param words complete ordered protocol sentence (without tag or terminator)
+     * @return cancellable future of normal records and terminal completion metadata
+     */
     public CompletableFuture<RawCommandResult> words(List<String> words) {
         return executeCommand(RouterOsCommand.fromWireWords(words));
     }
 
-    /** Convenience form of {@link #words(List)} with the command path first. */
+    /**
+     * Convenience form of {@link #words(List)} with the command path first.
+     *
+     * @param path absolute RouterOS command path
+     * @param words additional exact protocol words
+     * @return cancellable future of the raw result
+     */
     public CompletableFuture<RawCommandResult> words(String path, String... words) {
         Objects.requireNonNull(words, "words");
         java.util.ArrayList<String> sentence = new java.util.ArrayList<>(words.length + 1);

@@ -44,6 +44,51 @@ class RawWordsApiTest {
         }
     }
 
+
+    @Test
+    void cookbookReadOnlyWordSequencesAreForwardedExactlyAndInOrder() throws Exception {
+        WordCapturingConnection conn = new WordCapturingConnection();
+        var env = RouterOsEnvironment.withPackages(
+                new RouterOsSystemInfo("7.21", "arm64", "test-router", null, RouterOsRecord.empty()),
+                List.of());
+
+        try (MikrotikRtrApi api = new MikrotikRtrApi(
+                conn, new SessionLifecycle(), env, Runnable::run)) {
+            List<List<String>> examples = List.of(
+                    List.of("/interface/print", "?type=ether",
+                            "=.proplist=.id,name,type,disabled"),
+                    List.of("/interface/print", "?type=ether", "?disabled=false",
+                            "=.proplist=.id,name,type,disabled"),
+                    List.of("/interface/print", "?type=ether", "?type=vlan",
+                            "?#|", "=.proplist=name,type"),
+                    List.of("/ip/route/print", "?>distance=1",
+                            "?gateway=172.16.1.1", "?#&!",
+                            "=.proplist=.id,dst-address,distance,gateway"),
+                    List.of("/ip/route/print", "?comment"),
+                    List.of("/ip/route/print", "?-comment"),
+                    List.of("/interface/wifi/capsman/remote-cap/print",
+                            "?base-mac=D0:EA:11:8A:2F:9B"),
+                    List.of("/interface/wifi/capsman/remote-cap/print",
+                            "?=base-mac=D0:EA:11:8A:2F:9B"),
+                    List.of("/interface/wifi/capsman/remote-cap/print",
+                            "?base-mac"),
+                    List.of("/interface/print", "=count-only="));
+
+            for (List<String> words : examples) {
+                var result = api.raw().words(words);
+                assertEquals(words, conn.seen, "Must preserve the cookbook sentence exactly");
+                assertEquals("cap-test", result.records().get(0).require("identity"));
+                assertEquals("ok", result.completion().require("ret"));
+            }
+
+            // Async and synchronous APIs must use the same unparsed word path.
+            List<String> asyncWords = examples.get(2);
+            var asyncResult = api.async().raw().words(asyncWords).get(3, TimeUnit.SECONDS);
+            assertEquals(asyncWords, conn.seen);
+            assertEquals("ok", asyncResult.completion().require("ret"));
+        }
+    }
+
     @Test
     void protocolWordsAreExcludedFromStructuralDiagnostics() {
         String secret = "diagnostic-test-token-only";
