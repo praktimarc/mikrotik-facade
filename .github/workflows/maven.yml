@@ -27,6 +27,42 @@ jobs:
           java-version: '17'
       - name: Verify with Maven
         run: mvn -B -U clean verify --file pom.xml
+      - name: Verify distributable libraries and documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="mikrotik-facade-0.1.0-SNAPSHOT"
+          archive="target/${base}-dist.zip"
+          test -s "target/${base}.jar"
+          test -s "target/${base}-sources.jar"
+          test -s "target/${base}-javadoc.jar"
+          test -s "${archive}"
+          jar tf "target/${base}-sources.jar" | grep -Fx 'io/github/praktimarc/mikrotik/facade/MikrotikRtrApi.java'
+          jar tf "target/${base}-javadoc.jar" | grep -Fx 'index.html'
+          unzip -Z1 "${archive}" > target/distribution-files.txt
+          for path in \
+              "lib/${base}.jar" \
+              "lib/mikrotik-3.0.8-praktimarc.5.jar" \
+              "lib/slf4j-api-2.0.17.jar" \
+              "sources/${base}-sources.jar" \
+              "sources/mikrotik-3.0.8-praktimarc.5-sources.jar" \
+              "javadoc/${base}-javadoc.jar" \
+              "javadoc/mikrotik-3.0.8-praktimarc.5-javadoc.jar" \
+              "README.md"; do
+            grep -Fx "${base}/${path}" target/distribution-files.txt
+          done
+          if grep -Ei '/(junit|hamcrest|mockito)[^/]*[.]jar$' target/distribution-files.txt; then
+            echo "::error::Test dependencies leaked into runtime distribution"
+            exit 1
+          fi
+          unzip -p "${archive}" "${base}/README.md" | grep -F "Eclipse"
+      - name: Upload Eclipse/Ant distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikrotik-facade-distribution
+          path: target/mikrotik-facade-*-dist.zip
+          if-no-files-found: error
+          retention-days: 30
       - name: Check low-level API boundary and tracked sensitive files
         shell: bash
         run: |
