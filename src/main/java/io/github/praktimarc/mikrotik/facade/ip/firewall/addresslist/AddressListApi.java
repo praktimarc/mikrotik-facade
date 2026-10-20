@@ -115,8 +115,8 @@ public final class AddressListApi {
      *
      * <p>Reads the complete table without relying on server-side filtering,
      * then validates every matching {@code .id} before any removal is sent.
-     * No match returns {@code false}; one or more successful removals return
-     * {@code true}. Missing or duplicate item IDs cause a data error before
+     * No match returns {@code 0}; successful completion returns the
+     * number of entries removed. Missing or duplicate IDs cause an error before
      * the first removal. Comparison is textual: no DNS resolution, subnet
      * membership checks, or IP normalization.</p>
      *
@@ -127,14 +127,13 @@ public final class AddressListApi {
      * {@link #removeByListAndAddress(String, String)}.</p>
      *
      * @param ipAddress exact RouterOS address text
-     * @return {@code true} if one or more entries were removed,
-     *         {@code false} if no matching entries existed
+     * @return number of entries removed from all address lists; {@code 0} if absent
      * @throws IllegalArgumentException if the address is blank
      * @throws MikrotikDataException if any matching entry lacks a usable ID
      *         or two matching rows report the same ID
      * @throws MikrotikFacadeException if a RouterOS operation fails
      */
-    public boolean removeByIpAddress(String ipAddress) throws MikrotikFacadeException {
+    public int removeByIpAddress(String ipAddress) throws MikrotikFacadeException {
         return removeMatching(null, requireIpAddress(ipAddress));
     }
 
@@ -153,18 +152,17 @@ public final class AddressListApi {
      *
      * @param list exact RouterOS address-list name
      * @param address exact RouterOS address text (no CIDR inclusion or normalization)
-     * @return {@code true} after all matching entries were removed,
-     *         {@code false} if no entries matched
+     * @return number of entries removed from the selected list; {@code 0} if absent
      * @throws IllegalArgumentException if either argument is blank
      * @throws MikrotikDataException if a matching entry has no ID or IDs are duplicated
      * @throws MikrotikFacadeException if reading or removing entries fails
      */
-    public boolean removeByListAndAddress(String list, String address)
+    public int removeByListAndAddress(String list, String address)
             throws MikrotikFacadeException {
         return removeMatching(requireListName(list), requireIpAddress(address));
     }
 
-    private boolean removeMatching(String list, String address) throws MikrotikFacadeException {
+    private int removeMatching(String list, String address) throws MikrotikFacadeException {
         lifecycle.ensureOpen();
         List<AddressListEntry> entries = engine.executeSync(
                 findOperation(RouterOsProperties.builder().build(), mapper));
@@ -172,7 +170,7 @@ public final class AddressListApi {
         for (String id : ids) {
             engine.executeSync(removeOperation(id));
         }
-        return !ids.isEmpty();
+        return ids.size();
     }
 
     static String requireListName(String list) {

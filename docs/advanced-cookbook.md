@@ -261,13 +261,13 @@ address-list values as text.
 boolean approvedForTestRouter = false;
 
 if (approvedForTestRouter) {
-    boolean removed = api.ip().firewall().addressList()
+    int removedEntries = api.ip().firewall().addressList()
             .removeByIpAddress("192.0.2.10");
-    System.out.println("At least one entry removed: " + removed);
+    System.out.println("Removed entries: " + removedEntries);
 }
 ```
 
-The asynchronous equivalent returns `CompletableFuture<Boolean>`:
+The asynchronous equivalent returns `CompletableFuture<Integer>`:
 
 ```java
 // Only invoke after approval to remove this address from every list:
@@ -281,9 +281,9 @@ and gathers all matching RouterOS `.id` values. It validates all matching IDs
 **before** issuing the first removal. Matching rows without an ID or with
 duplicate IDs fail with `MikrotikDataException` and do not trigger a remove.
 
-If no entry matches, the method returns `false` without modifying RouterOS.
+If no entry matches, the method returns `0` without modifying RouterOS.
 Otherwise, it removes each matching ID in order; after all succeed, the
-method returns `true`. This includes duplicates in the *same* list and
+method returns the number of removed entries. This includes duplicates in the *same* list and
 entries in *different* lists. For example, `192.0.2.10` does not match
 `192.0.2.0/24` — there is no subnet inclusion, DNS resolution, or
 address normalization.
@@ -291,7 +291,7 @@ address normalization.
 **Important:** the removal sequence is **not a RouterOS transaction**.
 A failure or cancellation partway through can leave some entries already
 removed and others still present; no rollback is attempted. On error,
-the operation does not return a successful `boolean`; review the remaining
+the operation does not return a successful removal count; review the remaining
 entries explicitly before retrying. Concurrent router changes can also
 invalidate an ID after the initial read. The asynchronous variant submits
 individual deletes sequentially and cancellation stops subsequent dispatch
@@ -308,13 +308,13 @@ other lists.
 boolean approvedForTestRouter = false;
 
 if (approvedForTestRouter) {
-    boolean removed = api.ip().firewall().addressList()
+    int removedEntries = api.ip().firewall().addressList()
             .removeByListAndAddress("example-list", "192.0.2.10");
-    System.out.println("At least one entry removed in selected list: " + removed);
+    System.out.println("Removed entries in selected list: " + removedEntries);
 }
 ```
 
-The asynchronous variant returns `CompletableFuture<Boolean>`:
+The asynchronous variant returns `CompletableFuture<Integer>`:
 
 ```java
 // Only invoke with authorization to delete from the given list:
@@ -329,10 +329,12 @@ sequentially. A matching row without an ID or with a duplicated ID makes
 the operation fail **before** any deletion. Unrelated rows in other lists
 are not removal targets, even when they have the same address.
 
-As with `removeByIpAddress`, the method returns `false` when no entry
-matches, and `true` after all matching entries have been removed.
-It does not perform a transaction. If a removal fails or the operation is
-cancelled partway through, earlier deletions are not rolled back.
+As with `removeByIpAddress`, the method returns `0` when no entry
+matches, and the number of removed entries after all matching entries have been removed.
+It does not perform a transaction. For example, if three entries matched
+and were all removed, the return value is `3`. If a removal fails or the
+operation is cancelled partway through, earlier deletions are not rolled back
+and the method does not report a successful removal count.
 Large address-list tables are transferred in full for both methods.
 For removal of one specifically chosen record, use
 `findByListAndAddress(...)` and verify the item before `remove(id)`.
