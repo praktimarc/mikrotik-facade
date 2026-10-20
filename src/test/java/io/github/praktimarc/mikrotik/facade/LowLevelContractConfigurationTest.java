@@ -15,7 +15,8 @@ class LowLevelContractConfigurationTest {
         String pom = Files.readString(Path.of("pom.xml"));
 
         assertTrue(pom.contains("<artifactId>mikrotik</artifactId>"));
-        assertTrue(pom.contains("<version>3.0.8-praktimarc.5</version>"));
+        assertTrue(pom.contains("<mikrotik.version>3.0.8-praktimarc.5</mikrotik.version>"));
+        assertTrue(pom.contains("<version>${mikrotik.version}</version>"));
         assertTrue(pom.contains("<exclude>**/*IT.java</exclude>"));
         assertTrue(pom.contains("<id>router-it</id>"));
         assertTrue(pom.contains("<artifactId>maven-failsafe-plugin</artifactId>"));
