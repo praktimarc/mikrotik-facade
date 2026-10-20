@@ -22,14 +22,15 @@ GitHub Actions on `main` runs both commands, checks for forbidden low-level inte
 
 This is a **targeted repository hygiene check**, not a complete security audit. The existing JUnit suite covers redacted diagnostics, query/command semantics, backpressure and failure mapping. Review environment files and arbitrary resources manually before any public release; never commit actual device credentials or private keys.
 
-## Unpublished word-level transport dependency
+## Published word-level transport dependency
 
-The `raw().words(...)` API currently requires the unpublished
-`mikrotik:3.0.8-praktimarc.5-SNAPSHOT` from source. Build/install this
-low-level snapshot before compiling the facade; the exact pinned SHA and
-diagnostic examples are in [raw protocol words](raw-protocol-words.md).
-Do not describe this snapshot as Maven Central ready until a new signed
-low-level release has been staged and published.
+The raw word-level API now depends on the signed low-level release
+`io.github.praktimarc:mikrotik:3.0.8-praktimarc.5`, rather than the previous
+unpublished `.5-SNAPSHOT`. The facade CI must resolve this dependency with
+standard Maven Central configuration, with no separate checkout or
+`mvn install` of `mikrotik-java`.
+
+See [raw protocol words](raw-protocol-words.md) for usage and diagnostics.
 
 ## Snapshot API change
 
@@ -48,7 +49,7 @@ and low-level dependency remain unchanged.
 ## Deliberate v1 exclusions
 
 - No RouterOS REST API, hidden `me.legrange.mikrotik.impl.*` API coupling or automatic reconnect/replay.
-- No server-side regex simulation via lexicographic queries; presence-query words `?name` / `?-name` need a future public low-level parser capability.
+- No server-side regex simulation via lexicographic queries; presence-query words `?name` / `?-name` remain unavailable in the structured parser but can be sent through the expert-only `raw().words(...)` API.
 - No binary upload API; the existing low-level binary download's cancellation cannot promise remote cancellation.
 
 For the execution design, see [architecture.md](architecture.md), for RouterOS behavior see [routeros-compatibility.md](routeros-compatibility.md), and for the exact low-level contract see [low-level-contract.md](low-level-contract.md).

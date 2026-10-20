@@ -114,7 +114,7 @@ that a menu applied every supplied equality filter. Typed remote-CAP lookups rea
 unfiltered rows and compare base MACs locally before mapping or uniqueness checks.
 
 Server-side `RouterOsQuery` supports only operations verified against the pinned public
-`mikrotik-java 3.0.8-praktimarc.4` string parser:
+`mikrotik-java 3.0.8-praktimarc.5` string parser:
 
 ```text
 eq / notEq / lt / gt / not / and / or
@@ -126,7 +126,7 @@ meaning and must not be used as a regex/prefix substitute.
 
 RouterOS presence query words (`?name`, `?-name`) are not exposed as typed
 `exists/notExists` in v1 because the pinned low-level public parser cannot safely emit
-them. This is a known low-level contract boundary, not a RouterOS protocol limitation.
+them. This is a boundary of the structured parser, not a RouterOS protocol limitation. For diagnostics, `raw().words(...)` can transmit the exact presence-query words.
 
 Regular expressions are explicit client-side operations through `ClientSideFilter`.
 They run on complete returned `RouterOsRecord` values and never alter source selection or

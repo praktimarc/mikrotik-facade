@@ -9,7 +9,7 @@ particular application that consumes it. See [getting started](getting-started.m
 
 - Java 17; Maven coordinates: `io.github.praktimarc:mikrotik-facade`.
 - Classic RouterOS binary API via the public low-level
-  `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` client.
+  `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5` client.
 - No RouterOS REST support or coupling to low-level `impl.*` packages.
 - One `MikrotikRtrApi` instance owns one authenticated RouterOS session.
 

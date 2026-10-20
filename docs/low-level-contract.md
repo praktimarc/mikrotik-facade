@@ -5,8 +5,8 @@
 The v1 facade is built against exactly:
 
 ```text
-io.github.praktimarc:mikrotik:3.0.8-praktimarc.5-SNAPSHOT
-development commit: b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b
+io.github.praktimarc:mikrotik:3.0.8-praktimarc.5
+release commit: 14c61d155faf224d1c0827a66aec4d16c44fca72
 low-level Java baseline: 11
 facade Java baseline: 17
 ```
@@ -14,7 +14,7 @@ facade Java baseline: 17
 The contract suite exists because the facade relies on behavioral guarantees that are
 stronger than merely compiling against the public classes.
 
-The previous low-level version, 3.0.8-praktimarc.4, was verified from Maven Central on 2026-10-08. The current exact-words development dependency is a newer **unpublished snapshot**; build/install it locally from the pinned mikrotik-java commit before building this facade. CI installs it from the source commit before verification.
+The low-level dependency is pinned to the signed GitHub release `v3.0.8-praktimarc.5` (release commit shown above). The Maven build resolves this release through the default Maven Central repository, without installing a source-built snapshot or configuring custom repositories. The earlier `.4` baseline was independently resolved with an empty local cache on 2026-10-08.
 
 ## Contract covered by the facade
 

@@ -1,6 +1,6 @@
 # Getting started with mikrotik-facade
 
-`mikrotik-facade` is a Java 17 library for the classic MikroTik RouterOS binary API. It is a higher-level consumer of `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4`, not an HTTP/REST client.
+`mikrotik-facade` is a Java 17 library for the classic MikroTik RouterOS binary API. It is a higher-level consumer of `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5`, not an HTTP/REST client.
 
 For more copyable examples across the typed modules, see the [practical Java cookbook](examples.md). The examples use documentation-only IP addresses, synthetic MACs, and environment-provided credentials.
 
@@ -11,7 +11,7 @@ For more copyable examples across the typed modules, see the [practical Java coo
 - A RouterOS account authorized to run the commands used by your application.
 - TLS certificates trusted by your JVM, or a caller-configured `SSLContext` for an internal CA.
 
-The low-level client is **published to Maven Central**. A clean-cache Maven consumer build downloaded its POM and JAR anonymously on 2026-10-08; no custom repository, locally installed JAR or publishing token is needed.
+The low-level client is distributed through Maven Central. The earlier `.4` release was successfully downloaded anonymously on 2026-10-08; this facade version pins `.5` so `ApiConnection.executeWords` is available. No custom repository, locally installed JAR or Sonatype publishing token is required for consumers.
 
 The facade is currently a `0.1.0-SNAPSHOT` project in this source repository. The following local build command produces its JAR; **do not assume the facade itself is available on Maven Central**:
 
