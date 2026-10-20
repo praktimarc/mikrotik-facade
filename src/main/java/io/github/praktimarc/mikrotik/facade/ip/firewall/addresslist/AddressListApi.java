@@ -110,24 +110,28 @@ public final class AddressListApi {
     }
 
     /**
-     * Removes an address-list entry matching exactly the supplied RouterOS {@code address} value.
+     * Removes every address-list entry whose RouterOS {@code address} property
+     * exactly equals the supplied string, across all address lists.
      *
-     * <p>This convenience method first reads <em>all</em> address-list entries without
-     * relying on potentially unreliable server-side equality filtering.
-     * It compares the returned address strings exactly (no DNS lookup, CIDR inclusion,
-     * or IP normalization). If no entry matches, no command is sent and {@code false}
-     * is returned. If more than one entry matches, it fails without deleting anything:
-     * the same address can occur in multiple RouterOS lists.</p>
+     * <p>Reads the complete table without relying on server-side filtering,
+     * then validates every matching {@code .id} before any removal is sent.
+     * No match returns {@code false}; one or more successful removals return
+     * {@code true}. Missing or duplicate item IDs cause a data error before
+     * the first removal. Comparison is textual: no DNS resolution, subnet
+     * membership checks, or IP normalization.</p>
      *
-     * <p>For an ambiguous address, call {@link #findByListAndAddress(String, String)}
-     * and then {@link #remove(String)} with a verified RouterOS {@code .id}.
-     * The read and remove are separate non-atomic commands; a stale ID or
-     * connection failure can still make removal fail.</p>
+     * <p>Removal is <strong>not atomic</strong>. If a RouterOS operation fails
+     * after some items have been removed, earlier removals remain applied.
+     * A concurrent router change can make a previously read ID stale.
+     * To remove only from one particular list, find by list and address and
+     * then use {@link #remove(String)} with the verified item ID.</p>
      *
-     * @param ipAddress exact address text as stored in RouterOS
-     * @return {@code true} if one matching entry was removed, {@code false} if none existed
+     * @param ipAddress exact RouterOS address text
+     * @return {@code true} if one or more entries were removed,
+     *         {@code false} if no matching entries existed
      * @throws IllegalArgumentException if the address is blank
-     * @throws MikrotikDataException if multiple entries match or the target has no usable item ID
+     * @throws MikrotikDataException if any matching entry lacks a usable ID
+     *         or two matching rows report the same ID
      * @throws MikrotikFacadeException if a RouterOS operation fails
      */
     public boolean removeByIpAddress(String ipAddress) throws MikrotikFacadeException {
@@ -135,12 +139,11 @@ public final class AddressListApi {
         lifecycle.ensureOpen();
         List<AddressListEntry> entries = engine.executeSync(
                 findOperation(RouterOsProperties.builder().build(), mapper));
-        Optional<String> id = uniqueIdForIpAddress(expected, entries);
-        if (id.isEmpty()) {
-            return false;
+        List<String> ids = idsForIpAddress(expected, entries);
+        for (String id : ids) {
+            engine.executeSync(removeOperation(id));
         }
-        engine.executeSync(removeOperation(id.orElseThrow()));
-        return true;
+        return !ids.isEmpty();
     }
 
     static String requireIpAddress(String ipAddress) {
@@ -151,26 +154,24 @@ public final class AddressListApi {
         return ipAddress;
     }
 
-    static Optional<String> uniqueIdForIpAddress(String ipAddress, List<AddressListEntry> entries)
+    static List<String> idsForIpAddress(String ipAddress, List<AddressListEntry> entries)
             throws MikrotikDataException {
         String expected = requireIpAddress(ipAddress);
         Objects.requireNonNull(entries, "entries");
-        AddressListEntry match = null;
+        java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>();
         for (AddressListEntry entry : entries) {
             if (!entry.address().map(expected::equals).orElse(false)) {
                 continue;
             }
-            if (match != null) {
+            String id = entry.id().filter(value -> !value.isBlank()).orElseThrow(
+                    () -> new MikrotikDataException(
+                            "Matching address-list entry has no RouterOS item ID"));
+            if (!ids.add(id)) {
                 throw new MikrotikDataException(
-                        "Multiple address-list entries have the same address; select a list and item ID");
+                        "Duplicate RouterOS item ID in matching address-list entries");
             }
-            match = entry;
         }
-        if (match == null) {
-            return Optional.empty();
-        }
-        return Optional.of(match.id().filter(id -> !id.isBlank()).orElseThrow(
-                () -> new MikrotikDataException("Matching address-list entry has no RouterOS item ID")));
+        return List.copyOf(ids);
     }
 
     static RouterOsOperation<List<AddressListEntry>> findOperation(RouterOsProperties queries, AddressListEntryMapper mapper) {

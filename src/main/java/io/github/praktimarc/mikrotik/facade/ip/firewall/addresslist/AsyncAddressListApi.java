@@ -99,16 +99,19 @@ public final class AsyncAddressListApi {
     }
 
     /**
-     * Asynchronously removes the single address-list entry with exactly this address.
+     * Asynchronously removes every address-list entry with the exact address
+     * text, regardless of which RouterOS lists contain it.
      *
-     * <p>The operation reads all entries, locally checks for a unique match,
-     * then removes by RouterOS {@code .id}. It returns {@code false} when absent,
-     * and fails if the address appears more than once or has no usable ID.
-     * Cancelling the future attempts to cancel the current RouterOS command;
-     * cancellation cannot roll back a remove that has already executed.</p>
+     * <p>Reads all entries, prevalidates all matching IDs, then submits
+     * individual removal commands sequentially. The result is {@code false}
+     * if absent or {@code true} when all matching items were removed.
+     * A failure or cancellation can leave a partially completed operation;
+     * it never rolls back successful removals. Cancelling attempts to cancel
+     * the currently pending RouterOS command and prevents subsequent commands
+     * from being started after cancellation is observed.</p>
      *
      * @param ipAddress exact RouterOS address text, without normalization
-     * @return future resolving to {@code true} if removed, {@code false} if absent
+     * @return cancellable future reporting whether any matches were removed
      */
     public CompletableFuture<Boolean> removeByIpAddress(String ipAddress) {
         String expected = AddressListApi.requireIpAddress(ipAddress);
@@ -126,25 +129,39 @@ public final class AsyncAddressListApi {
                 return;
             }
 
-            final Optional<String> id;
+            final List<String> ids;
             try {
-                id = AddressListApi.uniqueIdForIpAddress(expected, entries);
-            } catch (MikrotikDataException ambiguousOrMissingId) {
-                result.completeExceptionally(ambiguousOrMissingId);
+                ids = AddressListApi.idsForIpAddress(expected, entries);
+            } catch (MikrotikDataException invalidRecord) {
+                result.completeExceptionally(invalidRecord);
                 return;
             }
-            if (id.isEmpty()) {
+            if (ids.isEmpty()) {
                 result.complete(false);
                 return;
             }
             if (result.isDone()) return;
 
-            CompletableFuture<Void> removal = engine.executeAsync(
-                    AddressListApi.removeOperation(id.orElseThrow()));
-            result.track(removal);
-            removal.whenComplete((ignored, removeError) -> {
-                if (removeError == null) result.complete(true);
-                else result.completeExceptionally(unwrap(removeError));
+            // A separate command per ID. Promise chaining serializes removals:
+            // only after one command completes successfully is the next dispatched.
+            CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+            for (String id : ids) {
+                chain = chain.thenCompose(ignored -> {
+                    if (result.isDone()) {
+                        return CompletableFuture.failedFuture(
+                                new java.util.concurrent.CancellationException(
+                                        "Address-list removal no longer active"));
+                    }
+                    CompletableFuture<Void> removal = engine.executeAsync(
+                            AddressListApi.removeOperation(id));
+                    result.track(removal);
+                    return removal;
+                });
+            }
+            chain.whenComplete((ignored, removalError) -> {
+                if (result.isDone()) return;
+                if (removalError == null) result.complete(true);
+                else result.completeExceptionally(unwrap(removalError));
             });
         });
         return result;
