@@ -599,7 +599,16 @@ rebuild a new authenticated session and distinguish idempotent reads from
 writes that may already have been applied. Never log raw values or
 credentials as part of diagnostics.
 
-## 9. Choosing APIs and documentation boundaries
+## 9. Typed live RouterOS log streaming
+
+The session's `api.log().follow()` and `api.log().followOnly()` methods
+produce `Flow.Publisher<RouterLogEntry>` streams with individual `time`,
+`topics` and `message` accessors, along with the original `raw()` record.
+They share the native stream cancellation and backpressure behavior.
+The [typed Log API cookbook](log-streaming.md) includes complete subscriber
+and joint RouterOS 6/7 verification examples.
+
+## 10. Choosing APIs and documentation boundaries
 
 | Goal | Recommended API |
 | --- | --- |

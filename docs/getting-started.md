@@ -118,7 +118,9 @@ see the [Raw-Words Cookbook](raw-protocol-words.md).
 ## Continuous interface monitoring with Flow
 
 For arbitrary long-running RouterOS binary API commands, see the
-[Raw-Streaming guide](raw-streaming.md). It uses the same cancellation and
+[Raw-Streaming guide](raw-streaming.md), or the
+[typed Log API](log-streaming.md) for `api.log().follow()` and `followOnly()`.
+Raw streaming uses the same cancellation and
 backpressure infrastructure as typed interface monitoring.
 
 `interfaces().monitor("ether1")` is a cold `Flow.Publisher`: monitoring begins on subscription, not construction. Subscribers control demand and must cancel when they no longer need samples:

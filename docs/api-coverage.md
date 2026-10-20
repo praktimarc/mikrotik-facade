@@ -8,6 +8,8 @@ documented API modules at the current Java 17 `0.1.0-SNAPSHOT` baseline.
   interfaces, SNMP, files, ping, raw and guarded DHCP deletion.
 - [Advanced cookbook](advanced-cookbook.md): ID-based writes, Address Lists,
   SNMP changes, DHCP data fields, PCQ, IP pools, monitoring, futures and errors.
+- [Typed live log streaming](log-streaming.md): RouterLogEntry, `follow`,
+  `followOnly`, cancellation and device acceptance tests.
 - [Raw-Streaming guide](raw-streaming.md): exact protocol words delivered as
   bounded `Flow.Publisher` records with tag cancellation.
 - [Raw-Words Cookbook](raw-protocol-words.md): native binary protocol queries
