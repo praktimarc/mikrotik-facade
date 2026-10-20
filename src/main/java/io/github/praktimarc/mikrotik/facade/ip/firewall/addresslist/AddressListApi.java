@@ -16,6 +16,8 @@ import java.util.Optional;
 public final class AddressListApi {
     static final String PRINT_PATH = "/ip/firewall/address-list/print";
     static final String ADD_PATH = "/ip/firewall/address-list/add";
+    static final String SET_PATH = "/ip/firewall/address-list/set";
+    static final String REMOVE_PATH = "/ip/firewall/address-list/remove";
     private final CommandEngine engine;
     private final SessionLifecycle lifecycle;
     private final AddressListEntryMapper mapper;
@@ -72,11 +74,60 @@ public final class AddressListApi {
         return engine.executeSync(addOperation(properties));
     }
 
+    /**
+     * Updates one existing address-list entry using its exact RouterOS item ID.
+     *
+     * <p>This method changes router configuration. Look up and validate the
+     * intended item first. It does not perform an atomic read-modify-write or
+     * retry on connection failure. The properties must be nonempty and may
+     * not contain the reserved {@code .id} key.</p>
+     *
+     * @param id exact RouterOS item ID (for example {@code *1}), not an IP address
+     * @param properties nonempty RouterOS update properties, excluding {@code .id}
+     * @throws IllegalArgumentException if the ID is blank, properties are empty,
+     *                                  or they contain {@code .id}
+     * @throws MikrotikFacadeException if execution fails
+     */
+    public void setProperties(String id, RouterOsProperties properties) throws MikrotikFacadeException {
+        lifecycle.ensureOpen();
+        engine.executeSync(setPropertiesOperation(id, properties));
+    }
+
+    /**
+     * Removes one address-list entry by exact RouterOS item ID.
+     *
+     * <p>Destructive operation: do not pass an IP address, list name, or
+     * unverified ID. The caller is responsible for authorization.</p>
+     *
+     * @param id exact RouterOS item ID
+     * @throws IllegalArgumentException if the ID is blank
+     * @throws MikrotikFacadeException if removal fails
+     */
+    public void remove(String id) throws MikrotikFacadeException {
+        lifecycle.ensureOpen();
+        engine.executeSync(removeOperation(id));
+    }
+
     static RouterOsOperation<List<AddressListEntry>> findOperation(RouterOsProperties queries, AddressListEntryMapper mapper) {
         return FirewallOperations.find("find firewall address-list entries", PRINT_PATH, queries, mapper::map);
     }
 
     static RouterOsOperation<Optional<String>> addOperation(RouterOsProperties properties) {
         return FirewallOperations.add("add firewall address-list entry", ADD_PATH, properties);
+    }
+
+    static RouterOsOperation<Void> setPropertiesOperation(String id, RouterOsProperties properties) {
+        Objects.requireNonNull(properties, "properties");
+        if (properties.asMap().isEmpty()) {
+            throw new IllegalArgumentException("properties must not be empty");
+        }
+        if (properties.asMap().containsKey(".id")) {
+            throw new IllegalArgumentException("properties must not override .id");
+        }
+        return FirewallOperations.set("set firewall address-list properties", SET_PATH, id, properties);
+    }
+
+    static RouterOsOperation<Void> removeOperation(String id) {
+        return FirewallOperations.remove("remove firewall address-list entry", REMOVE_PATH, id);
     }
 }

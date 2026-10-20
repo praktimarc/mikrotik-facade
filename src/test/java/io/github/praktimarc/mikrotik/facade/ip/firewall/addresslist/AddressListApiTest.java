@@ -42,6 +42,48 @@ class AddressListApiTest {
         assertEquals("*C",add.map(new CommandResult(List.of(),RouterOsRecord.of(Map.of("ret","*C")))).orElseThrow());
         assertThrows(MikrotikDataException.class,()->new AddressListEntryMapper().map(RouterOsRecord.of(Map.of("timeout","bad-time"))));
     }
+    @Test void setPropertiesUsesExactIdAndPreservesAllUpdateValues() throws Exception {
+        RouterOsProperties updates = RouterOsProperties.builder()
+                .set("comment", "test entry with whitespace and = sign")
+                .set("disabled", "true")
+                .set("timeout", "5m")
+                .build();
+        var operation = AddressListApi.setPropertiesOperation("*A", updates);
+        assertEquals("/ip/firewall/address-list/set", operation.command().path());
+        assertEquals("*A", operation.command().arguments().get(".id"));
+        assertEquals("test entry with whitespace and = sign",
+                operation.command().arguments().get("comment"));
+        assertEquals("true", operation.command().arguments().get("disabled"));
+        assertEquals("5m", operation.command().arguments().get("timeout"));
+        assertEquals(4, operation.command().arguments().size());
+        assertNull(operation.map(new CommandResult(List.of(), RouterOsRecord.empty())));
+    }
+
+    @Test void setPropertiesRejectsInvalidTargetsAndReservedIdentity() {
+        var valid = RouterOsProperties.builder().set("comment", "example").build();
+        assertThrows(IllegalArgumentException.class,
+                () -> AddressListApi.setPropertiesOperation("  ", valid));
+        assertThrows(IllegalArgumentException.class,
+                () -> AddressListApi.setPropertiesOperation("*A",
+                        RouterOsProperties.builder().build()));
+        assertThrows(IllegalArgumentException.class,
+                () -> AddressListApi.setPropertiesOperation("*A",
+                        RouterOsProperties.builder().set(".id", "*B").build()));
+        assertThrows(NullPointerException.class,
+                () -> AddressListApi.setPropertiesOperation("*A", null));
+    }
+
+    @Test void removeUsesExactIdOnlyAndMapsVoidCompletion() throws Exception {
+        var operation = AddressListApi.removeOperation("*D");
+        assertEquals("/ip/firewall/address-list/remove", operation.command().path());
+        assertEquals(Map.of(".id", "*D"), operation.command().arguments());
+        assertNull(operation.map(new CommandResult(List.of(), RouterOsRecord.empty())));
+        assertThrows(IllegalArgumentException.class,
+                () -> AddressListApi.removeOperation(" "));
+        assertThrows(NullPointerException.class,
+                () -> AddressListApi.removeOperation(null));
+    }
+
     @Test void listAndAddressMustBothMatchActualRouterOsFields() throws Exception {
         var query = RouterOsProperties.builder().set("list", "allowed")
                 .set("address", "192.0.2.10").build();
