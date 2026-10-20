@@ -31,9 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="0.1.0-SNAPSHOT"
-          base="mikrotik-facade-${version}"
-          root="${base}"
+          base="mikrotik-facade-0.1.0-SNAPSHOT"
           archive="target/${base}-dist.zip"
           test -s "target/${base}.jar"
           test -s "target/${base}-sources.jar"
@@ -51,34 +49,20 @@ jobs:
               "javadoc/${base}-javadoc.jar" \
               "javadoc/mikrotik-3.0.8-praktimarc.5-javadoc.jar" \
               "README.md"; do
-            grep -Fx "${root}/${path}" target/distribution-files.txt
+            grep -Fx "${base}/${path}" target/distribution-files.txt
           done
-          if grep -Ei '/(junit|hamcrest|mockito)[^/]*[.]jar
-        shell: bash
-        run: |
-          if git grep -n 'me\.legrange\.mikrotik\.impl\.' -- src/main/java; then
-            echo "::error::Forbidden low-level internal API reference"
-            exit 1
-          fi
-          if git ls-files | grep -Ei '[.](jar|jks|keystore|p12|pfx|pem|key)'; then
-            echo "::error::Tracked dependency binary or sensitive key material"
-            exit 1
-          fi
-      - name: Generate Java API documentation
-        run: mvn -B -U org.apache.maven.plugins:maven-javadoc-plugin:3.11.2:javadoc --file pom.xml
-      - name: Scan incoming commits for secrets (Gitleaks)
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: "false"
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
-      - name: Scan current checkout for secrets (Gitleaks)
-        run: gitleaks dir . --redact --no-banner --exit-code=2
- target/distribution-files.txt; then
+          if grep -Ei '/(junit|hamcrest|mockito)[^/]*[.]jar$' target/distribution-files.txt; then
             echo "::error::Test dependencies leaked into runtime distribution"
             exit 1
           fi
-          unzip -p "${archive}" "${root}/README.md" | grep -F "Eclipse"
+          unzip -p "${archive}" "${base}/README.md" | grep -F "Eclipse"
+      - name: Upload Eclipse/Ant distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikrotik-facade-distribution
+          path: target/mikrotik-facade-*-dist.zip
+          if-no-files-found: error
+          retention-days: 30
       - name: Check low-level API boundary and tracked sensitive files
         shell: bash
         run: |
