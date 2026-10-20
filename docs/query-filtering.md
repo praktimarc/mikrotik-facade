@@ -80,13 +80,19 @@ those simple equality terms.
 
 ## Deliberate exists/notExists boundary
 
-RouterOS itself has presence-query words such as `?name` and `?-name`, but the pinned
-`mikrotik-java 3.0.8-praktimarc.4` public string parser does not provide a safe public
-syntax that can emit them. The facade therefore does not expose fake
-`exists()/notExists()` methods.
+RouterOS itself has presence-query words such as `?name` and `?-name`, but the
+structured low-level string parser does not safely express them. Therefore
+`RouterOsQuery` does not expose fake `exists()/notExists()` methods.
 
-A future implementation requires a new public low-level API that can express raw query
-words directly, followed by a deliberate low-level dependency upgrade and contract test.
+For protocol diagnostics use the exact, unparsed word-level API introduced in
+`mikrotik-java 3.0.8-praktimarc.5`:
+
+```java
+RawCommandResult result = mtApi.raw().words("/interface/print", "?name");
+```
+
+This preserves the literal query word and bypasses the parser. Do not assume
+every RouterOS menu correctly applies every server-side query.
 
 ## Client-side regex
 

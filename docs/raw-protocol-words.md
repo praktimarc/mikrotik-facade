@@ -60,18 +60,22 @@ byte-for-byte; RouterOS traps are still mapped into the facade exception
 hierarchy. The exact outbound request words are those supplied by the caller
 plus the internal tag and terminator.
 
-## Development dependency
+## Published low-level dependency
 
-This feature requires `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5-SNAPSHOT`.
-It is **not yet published on Maven Central**. Build and install the
-`praktimarc/mikrotik-java` source from commit
-`b7ea9d0bc0e9c873288de81f1a14a3852ef1b38b` first:
+The raw word-level API requires
+`io.github.praktimarc:mikrotik:3.0.8-praktimarc.5`.
+It is provided by the signed [GitHub release](https://github.com/praktimarc/mikrotik-java/releases/tag/v3.0.8-praktimarc.5)
+and resolved by Maven from the default Maven Central repository. Do not install or
+pin a local `.5-SNAPSHOT` development JAR.
+
+To verify a fresh Maven consumer download independently:
 
 ```sh
-mvn -B clean install
+mvn -B -U org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get \
+  -Dartifact=io.github.praktimarc:mikrotik:3.0.8-praktimarc.5
 ```
 
-Then build/install this facade snapshot. The CI performs the low-level
-source installation from the pinned GitHub commit before building the facade.
-The existing `.4` JAR does **not** support `executeWords` and must not remain
-on the consumer runtime classpath.
+No custom Maven repository, Sonatype token, or alternate credentials are needed
+to consume the public artifact. The old `.4` JAR does **not** support
+`ApiConnection.executeWords` and must not remain on the consumer runtime
+classpath.

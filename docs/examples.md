@@ -339,5 +339,5 @@ var query = api.raw().words(
 System.out.println(query.records().size());
 ~~~
 
-See [raw protocol words](raw-protocol-words.md). The word-level API requires
-an unpublished development dependency until the next low-level release.
+See [raw protocol words](raw-protocol-words.md). The word-level API requires the
+published low-level release `mikrotik:3.0.8-praktimarc.5`.

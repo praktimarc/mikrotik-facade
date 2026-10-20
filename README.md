@@ -10,7 +10,7 @@ The v1 feature set is implemented and has passed the Java 17 CI suite; the facad
 
 - Java 17
 - Maven
-- Low-level client: `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4`
+- Low-level client: `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5`
 - SLF4J API for logging; the library does not force a backend
 - JUnit 5 for tests
 
@@ -24,7 +24,7 @@ Diagnostics are session/operation-correlated and intentionally structural: comma
 
 ## Dependency note
 
-The low-level baseline `io.github.praktimarc:mikrotik:3.0.8-praktimarc.4` is published to Maven Central. Its POM and JAR were successfully downloaded from the default Central repository during an external clean-cache build on 2026-10-08. No custom Maven repository, credentials, `systemPath`, or checked-in dependency JAR is required. A subsequent `mvn -B -U clean verify` on Windows with Java 17 successfully built `mikrotik-facade-0.1.0-SNAPSHOT.jar`.
+The facade pins `io.github.praktimarc:mikrotik:3.0.8-praktimarc.5`, the signed low-level release with exact RouterOS protocol-word support. Maven resolves it from the standard Maven Central repository, without a custom repository, publishing credentials, `systemPath`, checked-in JAR or local snapshot installation. The facade itself remains an unreleased `0.1.0-SNAPSHOT`.
 
 
 ## Quick start
@@ -93,8 +93,8 @@ production-specific values are included.
 
 ## Verification
 
-The low-level consumer contract is pinned to `mikrotik 3.0.8-praktimarc.4`
-(release commit `c170858efaac04fc78771903ef4c2bdbb6d35325`).
+The low-level consumer contract is pinned to `mikrotik 3.0.8-praktimarc.5`
+(release commit `14c61d155faf224d1c0827a66aec4d16c44fca72`).
 The contract tests use only the public low-level API and an independent loopback RouterOS
 wire peer.
 
@@ -143,6 +143,6 @@ List<WifiRegistration> registrations =
 ```
 
 Do not emulate regex/prefix matching with RouterOS `>` / `<` queries. Presence
-queries (`exists/notExists`) are also deliberately absent in v1 because the pinned
-low-level public parser cannot safely emit RouterOS `?name` / `?-name` query words.
+queries (`exists/notExists`) remain unavailable through the structured v1 parser,
+but `raw().words(...)` can transmit RouterOS `?name` / `?-name` query words verbatim.
 See `docs/query-filtering.md`.
