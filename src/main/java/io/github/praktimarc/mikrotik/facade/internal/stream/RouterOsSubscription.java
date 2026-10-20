@@ -161,7 +161,7 @@ final class RouterOsSubscription<T> implements Flow.Subscription, ResultListener
                 operation,
                 command.path(),
                 command.arguments(),
-                command.queries())));
+                command.queryValuesForRedaction())));
     }
 
     @Override
@@ -205,7 +205,9 @@ final class RouterOsSubscription<T> implements Flow.Subscription, ResultListener
             return;
         }
         try {
-            String tag = connection.execute(command.serialize(), this);
+            String tag = command.hasWireWords()
+                    ? connection.executeWords(command.wireWords(), this)
+                    : connection.execute(command.serialize(), this);
             operationContext.tagAssigned(tag);
         } catch (MikrotikApiException failure) {
             operationContext.dispatchFinishedWithoutTag();
@@ -214,7 +216,7 @@ final class RouterOsSubscription<T> implements Flow.Subscription, ResultListener
                     operation,
                     command.path(),
                     command.arguments(),
-                    command.queries()), false);
+                    command.queryValuesForRedaction()), false);
         } catch (RuntimeException failure) {
             operationContext.dispatchFinishedWithoutTag();
             failLocal(new MikrotikFacadeException(

@@ -2,8 +2,8 @@
 MikrotikRtrApi	builder,environment,raw,ip,wifi,interfaces,queue,snmp,ping,file,async,close	docs/getting-started.md
 MikrotikRtrApiBuilder	host,credentials,transport,port,connectTimeout,commandTimeout,bootstrapRetries,callbackExecutor,connect	docs/getting-started.md
 async.AsyncMikrotikRtrApi	raw,ip,wifi,interfaces,queue,snmp,ping,file	docs/advanced-cookbook.md
-raw.RawApi	execute,command,words	docs/raw-protocol-words.md
-raw.AsyncRawApi	execute,command,words	docs/raw-protocol-words.md
+raw.RawApi	execute,command,words,streamWords	docs/raw-protocol-words.md
+raw.AsyncRawApi	execute,command,words,streamWords	docs/raw-protocol-words.md
 raw.RawCommandBuilder	argument,flag,query,property,execute	docs/getting-started.md
 raw.RawCommandBuilder$Async	argument,flag,query,property,execute	docs/getting-started.md
 ip.IpApi	address,pool,dhcpServer,firewall	docs/examples.md

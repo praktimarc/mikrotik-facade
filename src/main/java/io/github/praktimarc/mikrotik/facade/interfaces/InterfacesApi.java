@@ -13,6 +13,7 @@ import io.github.praktimarc.mikrotik.facade.internal.compat.EqualityQueryVerifie
 import io.github.praktimarc.mikrotik.facade.internal.operation.RouterOsOperation;
 import io.github.praktimarc.mikrotik.facade.internal.session.SessionLifecycle;
 import io.github.praktimarc.mikrotik.facade.internal.stream.RouterOsPublisher;
+import io.github.praktimarc.mikrotik.facade.internal.stream.RegisteredStreamSubscriber;
 import io.github.praktimarc.mikrotik.facade.internal.stream.StreamRegistry;
 import me.legrange.mikrotik.ApiConnection;
 
@@ -98,7 +99,7 @@ public final class InterfacesApi {
                 dispatchExecutor,
                 callbackExecutor,
                 monitorMapper::map);
-        return subscriber -> delegate.subscribe(new RegisteredSubscriber<>(subscriber, streamRegistry));
+        return subscriber -> delegate.subscribe(new RegisteredStreamSubscriber<>(subscriber, streamRegistry));
     }
 
     static RouterOsOperation<List<InterfaceInfo>> listOperation(
@@ -150,88 +151,6 @@ public final class InterfacesApi {
             throw new IllegalArgumentException(name + " must not be blank");
         }
         return value;
-    }
-
-    private static final class RegisteredSubscriber<T> implements Flow.Subscriber<T> {
-        private final Flow.Subscriber<? super T> target;
-        private final StreamRegistry registry;
-        private RegisteredSubscription subscription;
-
-        private RegisteredSubscriber(Flow.Subscriber<? super T> target, StreamRegistry registry) {
-            this.target = Objects.requireNonNull(target, "target");
-            this.registry = Objects.requireNonNull(registry, "registry");
-        }
-
-        @Override
-        public void onSubscribe(Flow.Subscription upstream) {
-            RegisteredSubscription registered = new RegisteredSubscription(upstream, registry);
-            this.subscription = registered;
-            registry.register(registered);
-            try {
-                target.onSubscribe(registered);
-            } catch (RuntimeException | Error callbackFailure) {
-                registered.cancel();
-                throw callbackFailure;
-            }
-        }
-
-        @Override
-        public void onNext(T item) {
-            try {
-                target.onNext(item);
-            } catch (RuntimeException | Error callbackFailure) {
-                RegisteredSubscription current = subscription;
-                if (current != null) {
-                    current.cancel();
-                }
-                throw callbackFailure;
-            }
-        }
-
-        @Override
-        public void onError(Throwable throwable) {
-            unregister();
-            target.onError(throwable);
-        }
-
-        @Override
-        public void onComplete() {
-            unregister();
-            target.onComplete();
-        }
-
-        private void unregister() {
-            RegisteredSubscription current = subscription;
-            if (current != null) {
-                registry.unregister(current);
-            }
-        }
-    }
-
-    private static final class RegisteredSubscription implements Flow.Subscription {
-        private final Flow.Subscription upstream;
-        private final StreamRegistry registry;
-        private boolean cancelled;
-
-        private RegisteredSubscription(Flow.Subscription upstream, StreamRegistry registry) {
-            this.upstream = Objects.requireNonNull(upstream, "upstream");
-            this.registry = Objects.requireNonNull(registry, "registry");
-        }
-
-        @Override
-        public void request(long n) {
-            upstream.request(n);
-        }
-
-        @Override
-        public synchronized void cancel() {
-            if (cancelled) {
-                return;
-            }
-            cancelled = true;
-            registry.unregister(this);
-            upstream.cancel();
-        }
     }
 
     @FunctionalInterface

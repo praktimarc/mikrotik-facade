@@ -414,6 +414,14 @@ after submitting async work. Do not rely on the thread executing
   Unit and wire-loopback tests verify transport and facade behavior, not every
   RouterOS implementation.
 
+## Continuous commands: live `follow` and `listen`
+
+Use [the Raw-Streaming guide](raw-streaming.md) when RouterOS emits
+unbounded `!re` sentences. `api.raw().words(...)` and its async variant
+are **finite, collecting operations** and must not be used for continuous
+log collection. Use `api.raw().streamWords(...)` to receive each record
+incrementally and cancel by the command's tag.
+
 ## 9. Protocol references
 
 - [MikroTik RouterOS API — protocol words, tags, print and boolean query stack](https://manual.mikrotik.com/docs/developer-guides/api/)
